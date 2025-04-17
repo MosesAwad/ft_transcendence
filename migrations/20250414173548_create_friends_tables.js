@@ -1,0 +1,33 @@
+/**
+ * @param { import("knex").Knex } knex
+ * @returns { Promise<void> }
+ */
+exports.up = function (knex) {
+    return knex.schema
+        .createTable('friendships', (table) => {
+            table.increments('id').primary();
+            table.integer('user_id').references('id').inTable('users').onDelete('CASCADE');
+            table.integer('friend_id').references('id').inTable('users').onDelete('CASCADE');
+            table.enum('status', ['pending', 'accepted', 'blocked']).defaultTo('pending');
+            table.timestamps(true, true);
+            table.unique(['user_id', 'friend_id']); // The combination of user_id + friend_id must be unique across the entire table."
+        })
+        .then(() => {
+            return knex.schema.createTable('friend_requests', (table) => {
+                table.increments('id').primary();
+                table.integer('sender_id').references('id').inTable('users').onDelete('CASCADE');
+                table.integer('receiver_id').references('id').inTable('users').onDelete('CASCADE');
+                table.timestamp('created_at').defaultTo(knex.fn.now());
+            });
+        });
+};
+
+/**
+ * @param { import("knex").Knex } knex
+ * @returns { Promise<void> }
+ */
+exports.down = function (knex) {
+    knex.schema
+        .dropTable('friend_requests')
+        .then(() => knex.schema.dropTable('friendships'));
+};
