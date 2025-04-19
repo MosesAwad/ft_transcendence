@@ -2,6 +2,7 @@ require("dotenv").config();
 const fastify = require("fastify")({
 	logger: true,
 });
+const path = require("path");
 const connectDB = require("./connect/connect");
 const authRoutes = require("./routes/authRoutes");
 const friendRoutes = require("./routes/friendRoutes");
@@ -11,11 +12,12 @@ const Token = require("./models/Token");
 const Friend = require("./models/Friend");
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
+const fastifyStatic = require("@fastify/static");
 
 const start = async () => {
 	try {
 		// 1. Connect to DB
-		const db = await connectDB("application");
+		const db = connectDB("application");
 		console.log("Database connected");
 
 		// 2. Initiliaze models
@@ -24,6 +26,10 @@ const start = async () => {
 		const tokenModel = new Token(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
+		fastify.register(fastifyStatic, {
+			root: path.join(__dirname, "public"),
+			prefix: "/", // Note 1
+		});
 		fastify.register(fastifyCookie, {
 			secret: process.env.COOKIE_SECRET,
 		});
@@ -32,14 +38,18 @@ const start = async () => {
 			cookie: {
 				cookieName: "accessToken",
 				signed: true,
-			}
+			},
 		});
 		fastify.register(require("./plugins/authentication"));
 
 		// 4. Register routes
-		fastify.register(authRoutes, { userModel, tokenModel });
+		fastify.register(authRoutes, {
+			userModel,
+			tokenModel,
+			prefix: "/api/v1/auth",
+		});
 		fastify.register(friendRoutes, { friendModel });
-		fastify.register(userRoutes);
+		fastify.register(userRoutes, { prefix: "api/v1/users" });
 
 		// 5. Start server
 		await fastify.listen({ port: 3000 });
@@ -51,3 +61,16 @@ const start = async () => {
 };
 
 start();
+
+/*
+	NOTES
+
+	Note 1
+
+		What's the point of the prefix?
+			* If your frontend expects URLs like /index.html, /styles.css, etc. — use prefix: '/'.
+			* If your frontend refers to files like /public/index.html, /public/styles.css — use prefix: '/public/'.
+		
+		Obviously, the front-end would be using option 1 and thus, we set prefix to '/'. Basically, the prefix depends on 
+		how you're referencing assets in your HTML/JS
+*/

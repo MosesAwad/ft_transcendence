@@ -50,6 +50,13 @@ class Token {
 			.del();
 		return deletedCount;
 	}
+
+	// Note 1
+	async deleteExpiredTokens(overstayDate) {
+		return await this.db("tokens")
+			.where("updated_at", "<", overstayDate)
+			.del();
+	}
 }
 
 module.exports = Token;
@@ -60,4 +67,15 @@ module.exports = Token;
         * Find by id (user) AND id (refreshToken)   ✅
         * Create Token (const userToken = { refreshToken, ip, userAgent, user: user._id }; + await Token.create(userToken);) ✅
         * Delete by id (user)  -> when logging out and when updating user ✅
+*/
+
+/*
+	NOTES 
+
+	Note 1
+
+		If a user closes his session in incognito mode and doesn't hit the logout button, then there is no way to retrieve his refreshToken 
+		cookie again and it is now bloating the tokens table in the database. So this method is called by a cron job to run at a schedule 
+		where any tokens that have not been updated in a while (the 'while' must be longer than the expiry date obviously, otherwise you would 
+		have to also add a column in the tokens table which includes the expiry date) get deleted automatically after the overstayDate.
 */

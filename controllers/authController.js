@@ -27,7 +27,7 @@ const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 
 	const refreshToken = createJWT(fastify, { user, refreshTokenId }, "1d"); // must match cookie expriation below
 	reply.setCookie("refreshToken", refreshToken, {
-		path: "/refresh", // Makes cookie available to ALL routes
+		path: "api/v1/auth/refresh", // Makes cookie available to ALL routes
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
@@ -97,8 +97,8 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		const { deviceId } = request.body;
 		const { id: userId } = request.user.user;
 
-		console.log(request.user)
-		console.log(userId, " and ", deviceId)
+		console.log(request.user);
+		console.log(userId, " and ", deviceId);
 		await tokenModel.deleteRefreshToken(userId, deviceId); // Note 3
 		reply.setCookie("accessToken", "logout", {
 			path: "/",
@@ -106,7 +106,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			expires: new Date(Date.now()),
 		});
 		reply.setCookie("refreshToken", "logout", {
-			path: "/auth/refresh",
+			path: "api/v1/auth/refresh",
 			httpOnly: true,
 			expires: new Date(Date.now()),
 		});
@@ -118,6 +118,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 	refresh: async (request, reply) => {
 		// Both control paths below involve the access token being invalid (aka no long there due to expiry)
 		const { refreshToken } = request.cookies;
+		console.log(refreshToken);
 		const unsignedCookie = request.unsignCookie(refreshToken);
 		if (!unsignedCookie.valid) {
 			throw new CustomError.UnauthenticatedError(
@@ -131,7 +132,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			payload.user.id,
 			payload.refreshTokenId
 		);
-		console.log(existingToken)
+		console.log(existingToken);
 		// 👇 Control path if neither refresh token nor access token can be found, or no access token but refresh token is invalid even though present
 		if (!existingToken || !existingToken?.is_valid) {
 			throw new CustomError.UnauthenticatedError(

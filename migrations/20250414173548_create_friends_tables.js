@@ -31,7 +31,7 @@ exports.up = function (knex) {
 				.enum("status", ["pending", "accepted", "blocked"])
 				.defaultTo("pending");
 			table.timestamps(true, true);
-			table.unique(["user_id", "friend_id"]); // The combination of user_id + friend_id must be unique across the entire table."
+			table.unique(["user_id", "friend_id"]); // Note 1
 		})
 		.then(() => {
 			return knex.schema.createTable("friend_requests", (table) => {
@@ -60,3 +60,18 @@ exports.down = function (knex) {
 		.dropTable("friend_requests")
 		.then(() => knex.schema.dropTable("friendships"));
 };
+
+/*
+	NOTES
+
+	Note 1
+
+		The combination of user_id + friend_id must be unique across the entire table." That's because if user 1 is friends with user 2, then 
+		I only want one entry for it. I don't want duplicates like this:
+			* user_id: 1 and friend_id: 2
+			* user_id: 2 and friend_id: 1
+		
+		So basically, yes, whoever sent the friend request first, will be the "true" user and the one accepted it would be the "true" friend. 
+		Basically, if you are the user would id 2 and you accepted a friend request from user with id 1, you cannot have a new entry in the 
+		table where you are user_id: 2 and friend_id: 1, that's you, are the one labeled as the friend.  
+*/
