@@ -23,5 +23,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "axios": "^1.8.4"
+  }
 }

@@ -1,54 +1,53 @@
 require("dotenv").config();
 const fastify = require("fastify")({
-  logger: true,
+	logger: true,
 });
 const connectDB = require("./connect/connect");
 const authRoutes = require("./routes/authRoutes");
-const friendRoutes = require("./routes/friendRoutes")
+const friendRoutes = require("./routes/friendRoutes");
+const userRoutes = require("./routes/userRoutes");
 const User = require("./models/User");
+const Token = require("./models/Token");
 const Friend = require("./models/Friend");
-const fastifyCookie = require('@fastify/cookie');
-const fastifyJwt = require('@fastify/jwt');
+const fastifyCookie = require("@fastify/cookie");
+const fastifyJwt = require("@fastify/jwt");
 
 const start = async () => {
-  try {
-    // 1. Connect to DB
-    const db = await connectDB("application");
-    console.log("Database connected");
+	try {
+		// 1. Connect to DB
+		const db = await connectDB("application");
+		console.log("Database connected");
 
-    // 2. Initiliaze models
-    const userModel = new User(db);
-    const friendModel = new Friend(db);
+		// 2. Initiliaze models
+		const userModel = new User(db);
+		const friendModel = new Friend(db);
+		const tokenModel = new Token(db);
 
-    // Register plugins
-    fastify.register(fastifyCookie, {
-      secret: process.env.COOKIE_SECRET
-    });
-    fastify.register(fastifyJwt, {
-      secret: process.env.JWT_SECRET,
-      sign: {
-        expiresIn: '30d'
-      },
-      cookie: {
-        cookieName: 'token',
-        secure: process.env.NODE_ENV === 'production', // HTTPS-only
-        sameSite: 'lax',  // Basic CSRF protection
-        httpOnly: true,  // Blocks JavaScript access to prevent XSS
-        signed: true // Enable encryption to get signed cookie, signature is automatically provided by @fastify/cookie
-      }
-    });
+		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
+		fastify.register(fastifyCookie, {
+			secret: process.env.COOKIE_SECRET,
+		});
+		fastify.register(fastifyJwt, {
+			secret: process.env.JWT_SECRET,
+			cookie: {
+				cookieName: "accessToken",
+				signed: true,
+			}
+		});
+		fastify.register(require("./plugins/authentication"));
 
-    // 3. Register routes
-    fastify.register(authRoutes, { userModel });
-    fastify.register(friendRoutes, { friendModel });
+		// 4. Register routes
+		fastify.register(authRoutes, { userModel, tokenModel });
+		fastify.register(friendRoutes, { friendModel });
+		fastify.register(userRoutes);
 
-    // 4. Start server
-    await fastify.listen({ port: 3000 });
-    console.log("Server running on http://localhost:3000");
-  } catch (err) {
-    console.log(err.message);
-    process.exit(1);
-  }
+		// 5. Start server
+		await fastify.listen({ port: 3000 });
+		console.log("Server running on http://localhost:3000");
+	} catch (err) {
+		console.log(err.message);
+		process.exit(1);
+	}
 };
 
 start();

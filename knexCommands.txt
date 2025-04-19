@@ -1,0 +1,239 @@
+==============================================================================================================================================================================================================================
+
+🛠️ What is npx?
+	npx is a command-line tool that comes with Node.js (since version 5.2 of npm). It's used to run Node binaries (like CLI tools) without having to install them globally.
+
+⚡ Why is npx used with Knex?
+	When you install Knex locally in your project (not globally), you don't have direct access to the knex command from your terminal. Instead of globally installing it with npm install -g knex, you can use:
+
+Example
+	npx knex migrate:make create_users_table
+	This runs the locally installed Knex CLI just for that command, without cluttering your system with global packages.
+
+✅ So in short:
+	npx runs local binaries (from node_modules/.bin) or temporarily downloads and runs one.
+
+It lets you use tools like knex, create-react-app, etc., without installing them globally. Super useful for running migration commands, seeds, or any other CLI stuff with Knex.
+
+==============================================================================================================================================================================================================================
+
+What is a migration? Is dropping a table considered a migration?
+
+	Yup — dropping a table is absolutely a migration in Knex (and most migration systems, really).
+
+	🔁 A migration = any change to your DB schema. That includes:
+
+		* Creating a table ✅
+		* Adding/removing columns ✅
+		* Creating indexes ✅
+		* Renaming stuff ✅
+		* Dropping a table ✅
+
+	Basically, if you're changing the structure of your DB (not the data itself), that's a migration.
+
+==============================================================================================================================================================================================================================
+How to create a table with knex CLI (or npx knex)?
+
+	* Create knexfile.js
+
+	* Fill it with this:
+
+		module.exports = {
+			development: {
+				client: 'sqlite3',
+				connection: {
+					filename: './dev.sqlite3' // Your SQLite file path
+				},
+				migrations: {
+					directory: './migrations'
+				},
+				useNullAsDefault: true // ← This silences the warning
+			}
+		};
+
+	* Run this command
+
+		npx knex migrate:make [create_users_tab]  // I called it this for users table
+
+	* Fill the create migrations folder 
+
+		/**
+		* @param { import("knex").Knex } knex
+		* @returns { Promise<void> }
+		*/
+		exports.up = function (knex) {
+			return knex.schema.createTable("users", (table) => {
+				table.increments("id").primary();
+				table
+					.string("username", 50)
+					.notNullable()
+					.checkLength(">=", 3)
+					.checkLength("<=", 50);
+				table.string("email").notNullable().unique();
+				table.string("password").notNullable().checkLength(">=", 6);
+			});
+		};
+
+		/**
+		* @param { import("knex").Knex } knex
+		* @returns { Promise<void> }
+		*/
+		exports.down = function (knex) {
+			return knex.schema.dropTable('users');
+		};
+
+	* Run this command
+
+			npx knex migrate:latest
+
+==============================================================================================================================================================================================================================
+
+==============================================================================================================================================================================================================================
+
+What is the difference between dropping a table and truncating a table?
+
+	You drop a table when:
+		* It no longer belongs in your app
+		* You’re permanently deleting its structure and all its data
+		* You’re doing a schema redesign
+		* You want to rename it the hard way (drop + recreate)
+	
+	You truncate (or delete rows) when:
+		* You’re in development and want to reset test data
+		* You’re running seeds and need to clean before inserting
+		* You want to wipe sensitive info (like logs) but keep the structure
+		* You’re debugging and want to simulate a fresh state
+
+Action 					| Keeps Table Structure?		| Keeps Data? 					   | When to Use
+Drop Table 				| ❌ No						   | ❌ No 							| When you're redesigning or deleting a table permanently
+Truncate Table 			| ✅ Yes 					   | ❌ No 							| When you're resetting data for testing/dev or cleaning up
+Delete Rows (del()) 	| ✅ Yes 					   | ⚠️ You choose what to delete 	 | When you want to remove some or all rows without resetting ID counters
+
+==============================================================================================================================================================================================================================
+
+	🌱 WTF is a seed in Knex?
+		A seed file is a script you write to fill your database with dummy data — users, posts, whatever — typically for testing or development.
+
+	Think of it as:
+		“Here’s some fake users to work with while I test stuff.”
+
+	So when you run:
+		npx knex seed:run
+
+	Knex looks into your seeds/ folder and runs those files to insert test data.
+
+	Seeds don’t change your table structure, they only add data (or in your case — you could use them to delete it).
+
+==============================================================================================================================================================================================================================
+
+Drop a table
+
+	npx knex migrate:make drop_users_table
+	npx knex migrate:latest
+
+==============================================================================================================================================================================================================================
+
+Delete table rows (using seeds)
+
+	So previously, we talked about truncate and delete as our alternatives to dropping a table. They both have their pros and cons, but we're gonna use a seed that bypasses these cons. Good thing about truncate is that 
+	when you delete the data, the id autoincrementor resets. The problem with it though is that if other tables reference the deleted row via a foreign key, that data won't get deleted in the other table EVEN IF you set 
+	ON DELETE CASCADE! Delete on the other hand doesn't have this issue, so ON DELETE CASCADE works with it. The only issue is that the id autoincrementor doesn't reset. So to fix it, write this seed:
+
+		/**
+		* @param { import("knex").Knex } knex
+		* @returns { Promise<void> }
+		*/
+		exports.seed = async function(knex) {
+		// Delete all users
+		await knex('users').del();
+
+		// Reset auto-increment ID for SQLite
+		await knex.raw("DELETE FROM sqlite_sequence WHERE name='users'");
+
+		// Insert fresh users
+		await knex('users').insert([
+			{ username: 'alice', email: 'alice@example.com', password: 'hashed_pw_1' },
+			{ username: 'bob', email: 'bob@example.com', password: 'hashed_pw_2' },
+			{ username: 'charlie', email: 'charlie@example.com', password: 'hashed_pw_3' }
+		]);
+		};
+
+		`````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+		EXTRA:
+		
+			What’s sqlite_sequence?
+				In SQLite, every table with an AUTOINCREMENT field (like your id) has an internal sqlite_sequence table that keeps track of the last value used for AUTOINCREMENT fields.
+				This table contains two columns:
+					* name: The name of the table (e.g., 'users', 'friends')
+					* seq: The last used AUTOINCREMENT value (e.g., 123 if id was 123 for the last row)
+
+			What does DELETE FROM sqlite_sequence WHERE name='users' do?
+				It resets the AUTOINCREMENT value for the users table in SQLite. This doesn't delete actual rows in the users table — only resets the internal sequence counter that tracks 
+				the id column.
+		`````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+	Step 1:
+
+		Add the following to knexfile.js:
+
+			seeds: {
+				directory: './seeds'
+			}
+	
+	Step 2:
+
+		Create seed file:
+
+			seeds/000_reset_users.js
+
+		Best practice to number them in the order you want them to happen because seeds run from top to bottom in alphabetical order by default. This only applies if you want to run all the seeds together 
+		but you can totally run just one at a time, so if you run just one, the number in the beginning of the file is irrelevant.
+
+	Step 3:
+
+		Add the logic to the seed file.
+
+	Step 4:
+
+		Run the seed
+			
+			* If one specific file:
+				npx knex seed:run --specific=000_reset_users.js (--knexfile knexfile.js --env development)
+
+			* If all seeds:
+				npx knex seed:run (--knexfile knexfile.js --env development)
+
+		Only specify the parts in parenthesis (--knexfile knexfile.js --env development) if:
+			* You have multiple environments (like development, production, test) in your knexfile.js -> default one (development) automatically
+			* Your knexfile.js isn't in the root, or isn’t named knexfile.js
+
+==============================================================================================================================================================================================================================
+
+How to update a table?
+
+npx knex migrate:make add_device_id_to_tokens
+
+exports.up = function (knex) {
+	return knex.schema.alterTable("tokens", (table) => {
+		table.uuid("device_id").notNullable();
+	});
+};
+
+exports.down = function (knex) {
+	return knex.schema.alterTable("tokens", (table) => {
+		table.dropColumn("device_id");
+	});
+};
+
+
+==============================================================================================================================================================================================================================
+
+To view migration history:
+
+	npx knex migrate:status
+
+Also, knex migrations are stored in the db and can be accessed like this
+
+	sqlite3 (db_name) "SELECT * FROM knex_migrations;"
+
+==============================================================================================================================================================================================================================

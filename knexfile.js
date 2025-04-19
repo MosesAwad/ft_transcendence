@@ -7,6 +7,10 @@ module.exports = {
       migrations: {
         directory: './migrations'
       },
-      useNullAsDefault: true // ← This silences the warning
+      useNullAsDefault: true, // ← This silences the warning
+      seeds: {
+        directory: './seeds'
+      }
     }
   };
+  

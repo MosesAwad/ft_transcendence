@@ -1,17 +1,31 @@
 const { registerOpts, loginOpts } = require("../schemas/authSchemas");
 
-
 async function authRoutes(fastify, options) {
-  const { userModel } = options;
-  const { errorHandler, register, login } =
-    require("../controllers/authController")(userModel, fastify);
+	const { userModel, tokenModel } = options;
+	const { errorHandler, register, login, logout, refresh } =
+		require("../controllers/authController")(
+			userModel,
+			tokenModel,
+			fastify
+		);
 
-  // set the error handler
-  fastify.setErrorHandler(errorHandler);
+	// set the error handler
+	fastify.setErrorHandler(errorHandler);
 
-  // set the endpoints
-  fastify.post("/register", registerOpts, register);
-  fastify.post("/login", loginOpts, login);
+	// set the endpoints
+	fastify.post("/register", registerOpts, register);
+	fastify.post("/login", loginOpts, login);
+	fastify.post(
+		"/logout",
+		{
+			preHandler: fastify.authenticate,
+			// logoutOpts??? ex: must include a deviceId,*/
+		},
+		logout
+	);
+	fastify.post(
+		"/refresh",/*{ logoutOpts??? ex: must include a deviceId}, */ refresh
+	);
 }
 
 module.exports = authRoutes;
