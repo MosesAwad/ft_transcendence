@@ -56,7 +56,7 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-	knex.schema
+	return knex.schema
 		.dropTable("friend_requests")
 		.then(() => knex.schema.dropTable("friendships"));
 };

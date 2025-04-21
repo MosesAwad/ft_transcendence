@@ -48,7 +48,7 @@ const start = async () => {
 			tokenModel,
 			prefix: "/api/v1/auth",
 		});
-		fastify.register(friendRoutes, { friendModel });
+		fastify.register(friendRoutes, { friendModel, prefix: "api/v1/friendships" });
 		fastify.register(userRoutes, { prefix: "api/v1/users" });
 
 		// 5. Start server
