@@ -29,6 +29,16 @@ module.exports = (friendModel) => ({
 		reply.send({ success: true });
 	},
 
+	// Cancel a pending request that you sent or delete a friendship
+	deleteFriendship: async (request, reply) => {
+		const { friendshipId } = request.params;
+		const {
+			user: { id: userId },
+		} = request.user;
+		await friendModel.abortFriendship(friendshipId, userId);
+		reply.code(204).send();
+	},
+
 	listFriends: async (request, reply) => {
 		const {
 			user: { id: userId },
@@ -44,7 +54,13 @@ module.exports = (friendModel) => ({
 		// use validation schema? to ensure that status must be pending but
 		// other than that, I want it to always be pending
 		const { status, direction } = request.query;
-		const requests = await friendModel.listRequests(userId, status, direction);
+		console.log(status);
+		console.log(direction);
+		const requests = await friendModel.listRequests(
+			userId,
+			status,
+			direction
+		);
 		reply.send(requests);
 	},
 });

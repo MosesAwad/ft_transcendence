@@ -64,6 +64,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			user.id,
 			deviceId
 		);
+
 		// 👇 Control path: If refresh token exists and specifically for the device the user is trying to log into now
 		if (existingToken) {
 			if (!existingToken.is_valid) {
@@ -76,6 +77,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			attachCookiesToReply(fastify, reply, userPayload, refreshTokenId); // Note 2
 			return reply.send({ user: userPayload });
 		}
+
 		// 👇 Control path: If refresh token doesn't exist or exists but for a separate device different from the one the user is trying to log into now
 		const refreshTokenId = crypto.randomBytes(40).toString("hex");
 		const userAgent = request.headers["user-agent"];
@@ -97,8 +99,6 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		const { deviceId } = request.body;
 		const { id: userId } = request.user.user;
 
-		console.log(request.user);
-		console.log(userId, " and ", deviceId);
 		await tokenModel.deleteRefreshToken(userId, deviceId); // Note 3
 		reply.setCookie("accessToken", "logout", {
 			path: "/",
@@ -118,7 +118,6 @@ module.exports = (userModel, tokenModel, fastify) => ({
 	refresh: async (request, reply) => {
 		// Both control paths below involve the access token being invalid (aka no long there due to expiry)
 		const { refreshToken } = request.cookies;
-		console.log(refreshToken);
 		const unsignedCookie = request.unsignCookie(refreshToken);
 		if (!unsignedCookie.valid) {
 			throw new CustomError.UnauthenticatedError(
@@ -126,19 +125,18 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			);
 		}
 		const payload = await fastify.jwt.verify(unsignedCookie.value);
-		console.log(payload);
-
 		const existingToken = await tokenModel.findByUserIdAndRefreshTokenId(
 			payload.user.id,
 			payload.refreshTokenId
 		);
-		console.log(existingToken);
+
 		// 👇 Control path if neither refresh token nor access token can be found, or no access token but refresh token is invalid even though present
 		if (!existingToken || !existingToken?.is_valid) {
 			throw new CustomError.UnauthenticatedError(
 				"Authentication Invalid"
 			);
 		}
+
 		// 👇 Control path if refresh token is present and valid but access token is no longer valid. In that case, attachCookiesToResponse makes a new access token.
 		attachCookiesToReply(
 			fastify,
@@ -156,6 +154,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		};
 
 		console.log(err);
+
 		// Handle SQLite UNIQUE constraint violation
 		if (err.code === "SQLITE_CONSTRAINT") {
 			customError.statusCode = StatusCodes.BAD_REQUEST;
@@ -164,6 +163,13 @@ module.exports = (userModel, tokenModel, fastify) => ({
 				customError.msg = `Duplicate value for field: ${field}`;
 			} else {
 				customError.msg = "Database constraint violation";
+			}
+		}
+
+		// Handle deviceId misconfugration message
+		if (err.code === "FST_ERR_VALIDATION") {
+			if (err.validation[0]?.instancePath === "/deviceId") {
+				customError.msg = "deviceId must be in UUID format";
 			}
 		}
 		reply.status(customError.statusCode).send({ error: customError.msg });

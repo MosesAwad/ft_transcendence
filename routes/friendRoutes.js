@@ -1,30 +1,49 @@
 const {
-	sendRequestOpts,
-	acceptRequestOpts,
-} = require("../schemas/friendSchemas");
+	createFriendshipOpts,
+	updateFriendshipOpts,
+	deleteFriendshipOpts,
+	listFriendshipOpts,
+} = require("../schemas/friendshipSchemas");
 
 async function friendRoutes(fastify, options) {
 	const { friendModel } = options;
-	const { createFriendship, updateFriendship, listFriends, listRequests } =
-		require("../controllers/friendController")(friendModel);
+	const {
+		createFriendship,
+		updateFriendship,
+		deleteFriendship,
+		listFriends,
+		listRequests,
+	} = require("../controllers/friendController")(friendModel);
 
 	fastify.post(
 		"/",
-		{ preHandler: fastify.authenticate, sendRequestOpts },
+		{
+			preHandler: fastify.authenticate,
+			schema: createFriendshipOpts.schema,
+		},
 		createFriendship
 	);
 	fastify.patch(
 		"/:friendshipId",
-		{ preHandler: fastify.authenticate, acceptRequestOpts },
+		{
+			preHandler: fastify.authenticate,
+			schema: updateFriendshipOpts.schema,
+		},
 		updateFriendship
+	);
+	fastify.delete(
+		"/:friendshipId",
+		{
+			preHandler: fastify.authenticate,
+			schema: deleteFriendshipOpts.schema,
+		},
+		deleteFriendship
 	);
 	fastify.get(
 		"/",
-		{ preHandler: fastify.authenticate },
+		{ preHandler: fastify.authenticate, schema: listFriendshipOpts.schema },
 		async (request, reply) => {
-			const hasQueryParams = Object.keys(request.query).length > 0;
-
-			if (hasQueryParams) {
+			if (request.query.status && request.query.direction) {
 				return listRequests(request, reply);
 			} else {
 				return listFriends(request, reply);

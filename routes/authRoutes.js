@@ -1,4 +1,8 @@
-const { registerOpts, loginOpts } = require("../schemas/authSchemas");
+const {
+	registerOpts,
+	loginOpts,
+	logoutOpts,
+} = require("../schemas/authSchemas");
 
 async function authRoutes(fastify, options) {
 	const { userModel, tokenModel } = options;
@@ -19,13 +23,11 @@ async function authRoutes(fastify, options) {
 		"/logout",
 		{
 			preHandler: fastify.authenticate,
-			// logoutOpts??? ex: must include a deviceId,*/
+			schema: logoutOpts.schema,
 		},
 		logout
 	);
-	fastify.post(
-		"/refresh",/*{ logoutOpts??? ex: must include a deviceId}, */ refresh
-	);
+	fastify.post("/refresh", refresh);
 }
 
 module.exports = authRoutes;

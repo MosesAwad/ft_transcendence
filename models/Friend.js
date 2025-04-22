@@ -47,6 +47,7 @@ class Friend {
 		});
 	}
 
+	// Accept or reject a request
 	async handleRequest(friendshipId, receiverId, action) {
 		// Find the friendship
 		const friendship = await this.db("friendships")
@@ -70,12 +71,25 @@ class Friend {
 			await this.db("friendships")
 				.where({ id: friendship.id })
 				.update({ status: "accepted", updated_at: this.db.fn.now() });
-		} else if (action === "reject") {
+		} else {
 			await this.db("friendships").where({ id: friendshipId }).del();
-		} // no need for this, use scehma
-		else {
-			throw new CustomError.BadRequestError("Invalid action");
 		}
+	}
+
+	// Cancel a pending request that you sent or delete a friendship
+	async abortFriendship(friendshipId, userId) {
+		const friendship = await this.db("friendships")
+			.where({ id: friendshipId })
+			.first();
+		if (!friendship) {
+			throw new CustomError.NotFoundError("No such request was found");
+		}
+		if (friendship.user_id !== userId && friendship.friend_id !== userId) {
+			throw new CustomError.UnauthorizedError(
+				"You're not authorized to respond to this request"
+			);
+		}
+		await this.db("friendships").where({ id: friendshipId }).del();
 	}
 
 	async listFriends(userId) {
@@ -98,7 +112,6 @@ class Friend {
 	}
 
 	async listRequests(userId, status, direction) {
-		console.log(status);
 		const baseQuery = this.db("friendships").where("status", status);
 		if (direction === "sent") {
 			return baseQuery
@@ -110,7 +123,7 @@ class Friend {
 					"users.id as recipientId",
 					"users.username as username"
 				);
-		} else if (direction === "received") {
+		} else {
 			return baseQuery
 				.clone()
 				.where("friendships.friend_id", userId)
@@ -120,9 +133,6 @@ class Friend {
 					"users.id as senderId",
 					"users.username as username"
 				);
-		} // No need for this, use validation schema
-		else {
-			throw new CustomError.BadRequestError("Invalid direction filter");
 		}
 	}
 }
