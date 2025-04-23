@@ -27,13 +27,46 @@ function parseCookies(rawCookieHeader) {
 	}
 
 	rawCookieHeader.split(";")?.forEach((cookie) => {
-		const [name, ...rest] = cookie.trim().split("=");
+		const [name, ...rest] = cookie.trim().split("=");	// Note
 		if (!name || rest.length === 0) {
 			return;
 		}
-		cookies[name] = decodeURIComponent(rest.join("="));
+		cookies[name] = decodeURIComponent(rest.join("="));	// Note
 	});
 	return cookies;
+
+	/*
+		NOTE
+		
+		In case the cookie somehow had an = inside the value (common with JWTs or base64 data), this tells it continue. Example:
+			cookie = "signedCookie=value.with.equals=signs=inside";
+			
+			Then because we said ...rest, we get:
+
+				rest = ["value.with.equals", "signs", "inside"]
+
+			rest.join("=") then reconstructs it as:
+ 
+				cookies[cookie] = "value.with.equals=signs=inside"
+			
+		Now why do we use decodeURIComponent? Because cookie values are often URL-encoded by browsers to safely transmit special characters 
+		(like = or ;) over HTTP headers. However, this is a browser feature, so actually when the server originally signed the cookie (e.g., 
+		using HMAC), it used the raw, unencoded value. So to properly verify the signature and compare hashes, we first need to decode the 
+		cookie back to its original, raw form using decodeURIComponent. Example:
+
+			Set-Cookie: theme=light%20mode
+				Will show up in document.cookie or request headers as:
+					"theme=light%20mode"
+				
+				If you just .split("=") and store it as-is, you get:
+					cookies["theme"] = "light%20mode"
+				
+				But you really want:
+					cookies["theme"] = "light mode"
+				
+				So you use:
+					decodeURIComponent("light%20mode") // → "light mode"
+	*/
 }
 
 function verifySignedCookie(rawCookieHeader, cookieName, secret) {
