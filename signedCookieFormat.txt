@@ -1,0 +1,19 @@
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+    eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6Im1yMSJ9LCJpYXQiOjE3NDUzNjY1MjgsImV4cCI6MTc0NTM2NjgyOH0.
+    rvG3BrwWRnj9QaxSJEm4_K6Fs9tNKyESwRrmsqj8-xY.
+    kk4blsF5ZDxv2Hpd578zMLhnoakk6zos8X%2FjL0Y9JiE
+
+The first three parts (separated by dots) form a valid JWT:
+
+* Header: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+
+* Payload: eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6Im1yMSJ9LCJpYXQiOjE3NDUzNjY1MjgsImV4cCI6MTc0NTM2NjgyOH0
+
+* Signature: rvG3BrwWRnj9QaxSJEm4_K6Fs9tNKyESwRrmsqj8-xY
+
+Then, there’s a fourth part (also separated by a dot):
+
+    .kk4blsF5ZDxv2Hpd578zMLhnoakk6zos8X%2FjL0Y9JiE 
+    
+    This is an HMAC-style server-side signature over the whole cookie, generated when using signed cookies in a 
+    framework like Express or Fastify.

@@ -54,8 +54,6 @@ module.exports = (friendModel) => ({
 		// use validation schema? to ensure that status must be pending but
 		// other than that, I want it to always be pending
 		const { status, direction } = request.query;
-		console.log(status);
-		console.log(direction);
 		const requests = await friendModel.listRequests(
 			userId,
 			status,
