@@ -1,7 +1,4 @@
 const bcrypt = require("bcryptjs");
-const CustomError = require("../errors");
-const { StatusCodes } = require("http-status-codes");
-const jwt = require("jsonwebtoken");
 
 class User {
 	constructor(db) {

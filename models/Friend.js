@@ -1,4 +1,3 @@
-const friendController = require("../controllers/friendController");
 const CustomError = require("../errors");
 class Friend {
 	constructor(db) {

@@ -7,7 +7,7 @@ module.exports = (friendModel, io, onlineUsers) => ({
 	createFriendship: async (request, reply) => {
 		const { friendId } = request.body;
 		const {
-			user: { id: userId },
+			user: { id: userId, username },
 		} = request.user;
 		if (request.user.user.id === friendId) {
 			throw new CustomError.BadRequestError(
@@ -19,18 +19,26 @@ module.exports = (friendModel, io, onlineUsers) => ({
 		// Notification handler
 		const targetSockets = onlineUsers.get(friendId); // After successful friend request, check if receiver is online
 		if (targetSockets) {
-			targetSockets.forEach((socketId) =>  {
+			targetSockets.forEach((socketId) => {
 				io.to(socketId).emit("friendRequestInform", {
 					fromUserId: userId,
-					message: `${userId} sent you a friend request!`,
+					message: `${username} sent you a friend request!`,
 				});
-				console.log(`Request notification sent to user ${friendId} on socket ${socketId}`);
-			})
+				console.log(
+					`Request notification sent to user ${friendId} on socket ${socketId}`
+				);
+			});
 		} else {
 			console.log(
-				`Request sent but user ${friendId} is offline, can't send notification.`
+				`Request sent but user ${friendId} is offline, can't send notification right now.`
 			);
 		}
+		// await notificationModel.storeNotification(
+		// 	userId,
+		// 	friendId,
+		// 	"friendRequest",
+		// 	`${username} sent you a friend request!`
+		// );
 
 		reply.code(StatusCodes.CREATED).send({ success: true });
 	},
@@ -40,7 +48,7 @@ module.exports = (friendModel, io, onlineUsers) => ({
 		const { friendshipId } = request.params;
 		const { action } = request.body;
 		const {
-			user: { id: userId },
+			user: { id: userId, username },
 		} = request.user;
 		const requestSenderId = await friendModel.handleRequest(
 			friendshipId,
@@ -55,9 +63,11 @@ module.exports = (friendModel, io, onlineUsers) => ({
 				targetSockets.forEach((socketId) => {
 					io.to(socketId).emit("friendRequestAccept", {
 						fromUserId: userId,
-						message: `${userId} has accepted your friend request!`,
+						message: `${username} has accepted your friend request!`,
 					});
-					console.log(`Acceptance notification sent to user ${requestSenderId} on socket ${socketId}`);
+					console.log(
+						`Acceptance notification sent to user ${requestSenderId} on socket ${socketId}`
+					);
 				});
 			} else {
 				console.log(

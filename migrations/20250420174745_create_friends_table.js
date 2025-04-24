@@ -7,11 +7,13 @@ exports.up = function (knex) {
 		table.increments("id").primary();
 		table
 			.integer("user_id")
+			.notNullable()
 			.references("id")
 			.inTable("users")
 			.onDelete("CASCADE");
 		table
 			.integer("friend_id")
+			.notNullable()
 			.references("id")
 			.inTable("users")
 			.onDelete("CASCADE");
