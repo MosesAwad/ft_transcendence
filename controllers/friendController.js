@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const bcrypt = require("bcryptjs");
 const CustomError = require("../errors");
 
-module.exports = (friendModel) => ({
+module.exports = (friendModel, io, onlineUsers) => ({
 	// Send a friend request
 	createFriendship: async (request, reply) => {
 		const { friendId } = request.body;
@@ -15,6 +15,23 @@ module.exports = (friendModel) => ({
 			);
 		}
 		await friendModel.sendRequest(userId, friendId);
+
+		// Notification handler
+		const targetSockets = onlineUsers.get(friendId); // After successful friend request, check if receiver is online
+		if (targetSockets) {
+			targetSockets.forEach((socketId) =>  {
+				io.to(socketId).emit("friendRequestInform", {
+					fromUserId: userId,
+					message: `${userId} sent you a friend request!`,
+				});
+				console.log(`Request notification sent to user ${friendId} on socket ${socketId}`);
+			})
+		} else {
+			console.log(
+				`Request sent but user ${friendId} is offline, can't send notification.`
+			);
+		}
+
 		reply.code(StatusCodes.CREATED).send({ success: true });
 	},
 
@@ -25,7 +42,29 @@ module.exports = (friendModel) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		await friendModel.handleRequest(friendshipId, userId, action);
+		const requestSenderId = await friendModel.handleRequest(
+			friendshipId,
+			userId,
+			action
+		);
+
+		// Notification handler
+		if (requestSenderId) {
+			const targetSockets = onlineUsers.get(requestSenderId);
+			if (targetSockets) {
+				targetSockets.forEach((socketId) => {
+					io.to(socketId).emit("friendRequestAccept", {
+						fromUserId: userId,
+						message: `${userId} has accepted your friend request!`,
+					});
+					console.log(`Acceptance notification sent to user ${requestSenderId} on socket ${socketId}`);
+				});
+			} else {
+				console.log(
+					`Request sent but user ${requestSenderId} is offline, can't send notification.`
+				);
+			}
+		}
 		reply.send({ success: true });
 	},
 
@@ -51,8 +90,6 @@ module.exports = (friendModel) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		// use validation schema? to ensure that status must be pending but
-		// other than that, I want it to always be pending
 		const { status, direction } = request.query;
 		const requests = await friendModel.listRequests(
 			userId,

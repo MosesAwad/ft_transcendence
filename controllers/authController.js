@@ -118,19 +118,26 @@ module.exports = (userModel, tokenModel, fastify) => ({
 	refresh: async (request, reply) => {
 		// Both control paths below involve the access token being invalid (aka no long there due to expiry)
 		const { refreshToken } = request.cookies;
-		const unsignedCookie = request.unsignCookie(refreshToken);
-		if (!unsignedCookie.valid) {
+		if (!refreshToken) {
+			// No refresh token can happen if a client hits our refresh endpoint without having logged in in the first place
 			throw new CustomError.UnauthenticatedError(
 				"Authentication Invalid"
 			);
 		}
-		const payload = await fastify.jwt.verify(unsignedCookie.value);
+		const unsignedCookie = request.unsignCookie(refreshToken);
+		if (!unsignedCookie.valid) {
+			// Note 4
+			throw new CustomError.UnauthenticatedError(
+				"Authentication Invalid"
+			);
+		}
+		const payload = await fastify.jwt.verify(unsignedCookie.value); // Note 4 (ibid)
 		const existingToken = await tokenModel.findByUserIdAndRefreshTokenId(
 			payload.user.id,
 			payload.refreshTokenId
 		);
 
-		// 👇 Control path if neither refresh token nor access token can be found, or no access token but refresh token is invalid even though present
+		// 👇 Control path if neither refresh token nor access token can be found, or no access token but refresh token is invalid (admin set it due to malicous behavior) even though present
 		if (!existingToken || !existingToken?.is_valid) {
 			throw new CustomError.UnauthenticatedError(
 				"Authentication Invalid"
@@ -225,4 +232,13 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		a deviceId; instead, I pair it with userId. That would be much harder to obtain because it sits in a signed cookie which stores it in a JWT that
 		is also signed. As such, only if the pair of userId provided and deviceId provided match an entry in the db, do we proceed to delete the refreshToken
 		from the db.
+	
+	Note 4
+
+		Calling request.unsignCookie(cookieValue) returns the following object:
+
+			{
+				valid: true or false,         // Whether the signature is valid
+				value: 'original_value_here'  // The actual cookie content (unsigned)
+			}
 */

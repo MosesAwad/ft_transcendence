@@ -6,14 +6,14 @@ const {
 } = require("../schemas/friendshipSchemas");
 
 async function friendRoutes(fastify, options) {
-	const { friendModel } = options;
+	const { friendModel, io, onlineUsers } = options;
 	const {
 		createFriendship,
 		updateFriendship,
 		deleteFriendship,
 		listFriends,
 		listRequests,
-	} = require("../controllers/friendController")(friendModel);
+	} = require("../controllers/friendController")(friendModel, io, onlineUsers);
 
 	fastify.post(
 		"/",

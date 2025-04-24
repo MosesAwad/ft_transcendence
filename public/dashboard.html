@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Dashboard</title>
+		<style>
+			body {
+				font-family: sans-serif;
+				padding: 2rem;
+				background-color: #f9f9f9;
+			}
+			button {
+				margin-bottom: 1rem;
+				padding: 0.5rem 1rem;
+				font-size: 1rem;
+				border: none;
+				background-color: #007bff;
+				color: white;
+				border-radius: 5px;
+				cursor: pointer;
+			}
+			button:hover {
+				background-color: #0056b3;
+			}
+			#notifications {
+				margin-top: 2rem;
+				background: #fff;
+				padding: 1rem;
+				border: 1px solid #ddd;
+				border-radius: 6px;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+			}
+			.notification {
+				padding: 0.5rem;
+				border-bottom: 1px solid #eee;
+			}
+			.notification:last-child {
+				border-bottom: none;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Welcome to the Dashboard 👋</h1>
+		<button id="showUserBtn">Show Current User</button>
+		<button id="logoutBtn">Logout</button>
+
+		<h2>Notifications</h2>
+		<div id="notifications">
+			<em>No notifications yet.</em>
+		</div>
+
+		<!-- Scripts -->
+		<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+		<script src="utils.js"></script>
+		<script src="dashboard.js"></script>
+	</body>
+</html>

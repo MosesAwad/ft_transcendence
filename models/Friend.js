@@ -49,6 +49,8 @@ class Friend {
 
 	// Accept or reject a request
 	async handleRequest(friendshipId, receiverId, action) {
+		let senderId = null;
+ 
 		// Find the friendship
 		const friendship = await this.db("friendships")
 			.where({ id: friendshipId })
@@ -71,9 +73,11 @@ class Friend {
 			await this.db("friendships")
 				.where({ id: friendship.id })
 				.update({ status: "accepted", updated_at: this.db.fn.now() });
+			senderId = friendship.user_id;
 		} else {
 			await this.db("friendships").where({ id: friendshipId }).del();
 		}
+		return senderId;
 	}
 
 	// Cancel a pending request that you sent or delete a friendship
