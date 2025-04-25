@@ -1,40 +1,195 @@
 document.addEventListener("DOMContentLoaded", () => {
 	const logoutBtn = document.getElementById("logoutBtn");
 	const showUserBtn = document.getElementById("showUserBtn");
+	const bellBtn = document.getElementById("bellBtn");
 	const notificationBox = document.getElementById("notifications");
-	const deviceId = localStorage.getItem("deviceId");
 
-	// Socket connection
+	const sendBtn = document.getElementById("sendFriendRequestBtn");
+	const emailInput = document.getElementById("friendEmail");
+	const incomingList = document.getElementById("incomingRequests");
+	const outgoingList = document.getElementById("outgoingRequests");
+	const friendsList = document.getElementById("friendsList");
+
+	const deviceId = localStorage.getItem("deviceId");
+	let notificationCount = 0;
+
 	const socket = io("http://localhost:3000", {
 		withCredentials: true,
 	});
 
+	function addNotification(message) {
+		const placeholder = notificationBox.querySelector("em");
+		if (placeholder) placeholder.remove();
+
+		const div = document.createElement("div");
+		div.classList.add("notification");
+		div.textContent = message;
+		notificationBox.appendChild(div);
+
+		notificationCount++;
+		bellBtn.setAttribute("data-count", notificationCount);
+	}
+
+	bellBtn.addEventListener("click", () => {
+		const visible = notificationBox.style.display === "block";
+		notificationBox.style.display = visible ? "none" : "block";
+		if (!visible) {
+			notificationCount = 0;
+			bellBtn.setAttribute("data-count", "0");
+		}
+	});
+
+	// Socket listeners
 	socket.on("friendRequestInform", (data) => {
-		// Remove placeholder if it's still there
-		const placeholder = notificationBox.querySelector("em");
-		if (placeholder) {
-			notificationBox.removeChild(placeholder);
-		}
-
-		const div = document.createElement("div");
-		div.textContent = data.message;
-		notificationBox.appendChild(div);
+		addNotification(data.message);
+		loadFriendData();
 	});
 
-    socket.on("friendRequestAccept", (data) => {
-        console.log(data);
-
-		// Remove placeholder if it's still there
-		const placeholder = notificationBox.querySelector("em");
-		if (placeholder) {
-			notificationBox.removeChild(placeholder);
-		}
-
-		const div = document.createElement("div");
-		div.textContent = data.message;
-		notificationBox.appendChild(div);
+	socket.on("friendRequestAccept", (data) => {
+		addNotification(data.message);
+		loadFriendData();
 	});
 
+	// Friend request handlers
+	sendBtn.addEventListener("click", async () => {
+		const email = emailInput.value.trim();
+		if (!email) return alert("Enter an email.");
+
+		const res = await fetchWithAutoRefresh(`${baseURL}/friendships`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify({ email }),
+		});
+
+		if (res.ok) {
+			alert("Request sent ✅");
+			emailInput.value = "";
+			loadFriendData();
+		} else {
+			const err = await res.text();
+			alert("Failed to send request ❌\n" + err);
+		}
+	});
+
+	// Load requests & friends
+	async function loadFriendData() {
+		// ============= Incoming Requests Section =============
+		const incomingReqRes = await fetchWithAutoRefresh(
+			`${baseURL}/friendships?status=pending&direction=received`,
+			{
+				credentials: "include",
+			}
+		);
+		if (!incomingReqRes.ok) {
+			return;
+		}
+		const incomingReqData = await incomingReqRes.json();
+
+		renderList(incomingList, incomingReqData, (item) => {
+			const li = document.createElement("li");
+			li.textContent = item.senderUsername;
+
+			const acceptBtn = makeButton("Accept", async () => {
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${item.friendshipId}`,
+					{
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({ action: "accept" }),
+					}
+				);
+				loadFriendData();
+			});
+
+			const rejectBtn = makeButton("Reject", async () => {
+				await fetchWithAutoRefresh(`${baseURL}/friendships/${item.friendshipId}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({ action: "reject" }),
+				});
+				loadFriendData();
+			});
+
+			li.appendChild(acceptBtn);
+			li.appendChild(rejectBtn);
+			return li;
+		});
+
+		// renderList(outgoingList, data.outgoing, (item) => {
+		// 	const li = document.createElement("li");
+		// 	li.textContent = item.receiverEmail;
+
+		// 	const cancelBtn = makeButton("Cancel", async () => {
+		// 		await fetchWithAutoRefresh(`${baseURL}/friendships`, {
+		// 			method: "POST",
+		// 			headers: { "Content-Type": "application/json" },
+		// 			credentials: "include",
+		// 			body: JSON.stringify({ id: item.id }),
+		// 		});
+		// 		loadFriendData();
+		// 	});
+
+		// 	li.appendChild(cancelBtn);
+		// 	return li;
+		// });
+
+		// ============= Friend List Section =============
+		const friendListRes = await fetchWithAutoRefresh(
+			`${baseURL}/friendships`,
+			{
+				credentials: "include",
+			}
+		);
+		if (!friendListRes.ok) {
+			return;
+		}
+		const friendListData = await friendListRes.json(); 
+
+		renderList(friendsList, friendListData, (item) => {
+			const li = document.createElement("li");
+			li.textContent = item.username;
+
+			const removeBtn = makeButton("Remove", async () => {
+				await fetchWithAutoRefresh(`${baseURL}/friendships`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({ id: item.id }),
+				});
+				loadFriendData();
+			});
+
+			li.appendChild(removeBtn);
+			return li;
+		});
+	}
+
+	function renderList(listEl, data, itemRenderer) {
+		listEl.innerHTML = "";
+		if (data.length === 0) {
+			const li = document.createElement("li");
+			li.textContent = "No items.";
+			listEl.appendChild(li);
+			return;
+		}
+		data.forEach((item) => {
+			const li = itemRenderer(item);
+			listEl.appendChild(li);
+		});
+	}
+
+	function makeButton(text, onClick) {
+		const btn = document.createElement("button");
+		btn.textContent = text;
+		btn.style.marginTop = "0.25rem";
+		btn.addEventListener("click", onClick);
+		return btn;
+	}
+
+	// Logout handler
 	if (logoutBtn) {
 		logoutBtn.addEventListener("click", async () => {
 			if (!deviceId) return alert("Missing deviceId");
@@ -53,6 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		});
 	}
 
+	// Show current user
 	if (showUserBtn) {
 		showUserBtn.addEventListener("click", async () => {
 			const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
@@ -64,4 +220,6 @@ document.addEventListener("DOMContentLoaded", () => {
 			}
 		});
 	}
+
+	loadFriendData();
 });

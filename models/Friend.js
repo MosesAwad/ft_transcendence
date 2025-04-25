@@ -48,8 +48,6 @@ class Friend {
 
 	// Accept or reject a request
 	async handleRequest(friendshipId, receiverId, action) {
-		let senderId = null;
- 
 		// Find the friendship
 		const friendship = await this.db("friendships")
 			.where({ id: friendshipId })
@@ -67,16 +65,17 @@ class Friend {
 				"You are already friends with this user"
 			);
 		}
+
 		// Update the friendship status
-		if (action === "accept") {
-			await this.db("friendships")
-				.where({ id: friendship.id })
-				.update({ status: "accepted", updated_at: this.db.fn.now() });
-			senderId = friendship.user_id;
-		} else {
-			await this.db("friendships").where({ id: friendshipId }).del();
-		}
-		return senderId;
+		const status = action === "accept" ? "accepted" : "declined";
+		await this.db("friendships").where({ id: friendship.id }).update({
+			status,
+			updated_at: this.db.fn.now(),
+		});
+		return {
+			requestSenderId: friendship.user_id,
+			status,
+		};
 	}
 
 	// Cancel a pending request that you sent or delete a friendship
@@ -92,7 +91,18 @@ class Friend {
 				"You're not authorized to respond to this request"
 			);
 		}
+		if (friendship.status === "pending" && friendship.user_id !== userId) {
+			throw new CustomError.UnauthorizedError(
+				"You're not authorized to delete this request"
+			);
+		}
+		const capture = {
+			pastStatus: friendship.status,
+			senderId: friendship.user_id,
+			receiverId: friendship.friend_id,
+		}; // if it was pending, we also want to delete the notification from the notifications table
 		await this.db("friendships").where({ id: friendshipId }).del();
+		return capture;
 	}
 
 	async listFriends(userId) {
@@ -124,7 +134,7 @@ class Friend {
 				.select(
 					"friendships.id as friendshipId",
 					"users.id as recipientId",
-					"users.username as username"
+					"users.username as senderUsername"
 				);
 		} else {
 			return baseQuery
@@ -134,7 +144,7 @@ class Friend {
 				.select(
 					"friendships.id as friendshipId",
 					"users.id as senderId",
-					"users.username as username"
+					"users.username as senderUsername"
 				);
 		}
 	}

@@ -20,7 +20,7 @@ exports.up = function (knex) {
 
 		// This status replaces friend_requests logic from an older, prototypal, deleted migration
 		table
-			.enum("status", ["pending", "accepted", "blocked"])
+			.enum("status", ["pending", "accepted", "declined", "blocked"])
 			.notNullable()
 			.defaultTo("pending");
 

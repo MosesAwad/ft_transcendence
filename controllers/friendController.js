@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const bcrypt = require("bcryptjs");
 const CustomError = require("../errors");
 
-module.exports = (friendModel, io, onlineUsers) => ({
+module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 	// Send a friend request
 	createFriendship: async (request, reply) => {
 		const { friendId } = request.body;
@@ -16,7 +16,7 @@ module.exports = (friendModel, io, onlineUsers) => ({
 		}
 		await friendModel.sendRequest(userId, friendId);
 
-		// Notification handler
+		// Notification handling
 		const targetSockets = onlineUsers.get(friendId); // After successful friend request, check if receiver is online
 		if (targetSockets) {
 			targetSockets.forEach((socketId) => {
@@ -33,12 +33,12 @@ module.exports = (friendModel, io, onlineUsers) => ({
 				`Request sent but user ${friendId} is offline, can't send notification right now.`
 			);
 		}
-		// await notificationModel.storeNotification(
-		// 	userId,
-		// 	friendId,
-		// 	"friendRequest",
-		// 	`${username} sent you a friend request!`
-		// );
+		await notificationModel.createNotification(
+			userId,
+			friendId,
+			"friendRequest",
+			`${username} sent you a friend request!`
+		);
 
 		reply.code(StatusCodes.CREATED).send({ success: true });
 	},
@@ -50,14 +50,14 @@ module.exports = (friendModel, io, onlineUsers) => ({
 		const {
 			user: { id: userId, username },
 		} = request.user;
-		const requestSenderId = await friendModel.handleRequest(
+		const { requestSenderId, status } = await friendModel.handleRequest(
 			friendshipId,
 			userId,
 			action
 		);
 
-		// Notification handler
-		if (requestSenderId) {
+		// Notification handling
+		if (status === "accepted") {
 			const targetSockets = onlineUsers.get(requestSenderId);
 			if (targetSockets) {
 				targetSockets.forEach((socketId) => {
@@ -71,10 +71,25 @@ module.exports = (friendModel, io, onlineUsers) => ({
 				});
 			} else {
 				console.log(
-					`Request sent but user ${requestSenderId} is offline, can't send notification.`
+					`Request sent but user ${requestSenderId} is offline, can't send notification right now.`
 				);
 			}
+			// Send them a notification stating that they accepted your friend request
+			await notificationModel.createNotification(
+				userId,
+				requestSenderId,
+				"friendRequest",
+				`${username} has accepted your friend request!`
+			);
+		} else {
+			// Delete the notification stating that they sent you a friend request from your panel whenever you reject them
+			await notificationModel.deleteNotification(
+				requestSenderId,
+				userId,
+				"friendRequest"
+			);
 		}
+
 		reply.send({ success: true });
 	},
 
@@ -84,7 +99,17 @@ module.exports = (friendModel, io, onlineUsers) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		await friendModel.abortFriendship(friendshipId, userId);
+		const capture = await friendModel.abortFriendship(friendshipId, userId);
+
+		// Notification handling
+		if (capture.pastStatus === "pending") {
+			await notificationModel.deleteNotification(
+				capture.senderId,
+				capture.receiverId,
+				"friendRequest"
+			);
+		}
+
 		reply.code(204).send();
 	},
 
@@ -93,6 +118,7 @@ module.exports = (friendModel, io, onlineUsers) => ({
 			user: { id: userId },
 		} = request.user;
 		const friends = await friendModel.listFriends(userId);
+
 		reply.send(friends);
 	},
 
@@ -106,6 +132,7 @@ module.exports = (friendModel, io, onlineUsers) => ({
 			status,
 			direction
 		);
+
 		reply.send(requests);
 	},
 });

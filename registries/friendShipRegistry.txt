@@ -1,0 +1,53 @@
+
+Action:
+    View pending requests user has sent
+
+Endpoint:
+    GET /friendships?status=pending&direction=sent
+
+========================================================================================
+
+Action:
+    View pending reqeust user has received
+
+Endpoint:
+    GET /friendships?status=pending&direction=received
+
+========================================================================================
+
+Action:
+    Accept a friend request
+
+Endpoint:
+    PATCH friendships/:frienshipId
+
+        Body:
+
+            {
+                "action": "accept"
+            }
+
+========================================================================================
+
+Action:
+    Decline a friend request
+
+Endpoint:
+    PATCH friendships/:frienshipId
+
+        Body:
+
+            {
+                "action": "reject"
+            }
+
+========================================================================================
+
+Action:
+    * Cancel a friend request user has sent
+    * Unfriend a user
+
+Endpoint:
+    DELETE friendships/:frienshipId
+
+========================================================================================

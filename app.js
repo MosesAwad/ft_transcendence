@@ -10,13 +10,17 @@ const userRoutes = require("./routes/userRoutes");
 const User = require("./models/User");
 const Token = require("./models/Token");
 const Friend = require("./models/Friend");
+const Notification = require("./models/Notification");
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
 const fastifyStatic = require("@fastify/static");
 
 // socket dependencies
 const socketIo = require("socket.io");
-const { handleSocketConnection, onlineUsers } = require("./sockets/connectionHandler");
+const {
+	handleSocketConnection,
+	onlineUsers,
+} = require("./sockets/connectionHandler");
 
 const start = async () => {
 	try {
@@ -28,6 +32,7 @@ const start = async () => {
 		const userModel = new User(db);
 		const friendModel = new Friend(db);
 		const tokenModel = new Token(db);
+		const notificationModel = new Notification(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
 		fastify.register(fastifyStatic, {
@@ -62,12 +67,12 @@ const start = async () => {
 		});
 		fastify.register(friendRoutes, {
 			friendModel,
+			notificationModel,
 			io,
 			onlineUsers,
 			prefix: "api/v1/friendships",
 		});
 		fastify.register(userRoutes, { prefix: "api/v1/users" });
-
 
 		// 6. Start server
 		await fastify.listen({ port: 3000 });
