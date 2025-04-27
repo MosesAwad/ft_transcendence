@@ -248,10 +248,17 @@ bellBtn.addEventListener("click", async () => {
 	const notificationListData = await notificationListRes.json();
 	renderList(notificationBox, notificationListData, (item) => {
 		const li = document.createElement("li");
-		li.style.backgroundColor = item.is_read ? "white" : "lightblue";
 		li.textContent = item.message;
+		li.style.backgroundColor = item.is_read ? "white" : "lightblue";
 		li.style.display = "block";
 		li.style.width = "100%";
+		li.style.padding = "0.75rem 1rem";
+		li.style.marginBottom = "0.5rem";
+		li.style.border = "1px solid #ccc";
+		li.style.borderRadius = "0.5rem";
+		li.style.cursor = "pointer";
+		li.style.transition = "background-color 0.3s ease";
+		
 
 		li.addEventListener("click", async () => {
 			if (item.is_read) return; // Already read, do nothing
@@ -269,7 +276,13 @@ bellBtn.addEventListener("click", async () => {
 			li.style.backgroundColor = "white";
 			item.is_read = 1;
 		});
-
+		li.addEventListener("mouseover", () => {
+			li.style.backgroundColor = item.is_read ? "#f5f5f5" : "#add8e6"; // light gray or stay light blue
+		});
+		li.addEventListener("mouseout", () => {
+			li.style.backgroundColor = item.is_read ? "white" : "lightblue";
+		});
+		
 		return li;
 	});
 

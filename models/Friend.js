@@ -73,8 +73,14 @@ class Friend {
 			updated_at: this.db.fn.now(),
 		});
 
+		const { username: requestSenderUsername } = await this.db("users")
+			.where({ id: friendship.user_id })
+			.select("username")
+			.first();
+
 		return {
 			requestSenderId: friendship.user_id,
+			requestSenderUsername,
 			status,
 		};
 	}

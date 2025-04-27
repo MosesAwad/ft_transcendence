@@ -5,8 +5,11 @@ class Notification {
 		this.db = db;
 	}
 
-	async createNotification(senderId, receiverId, type, message) {
-		if (!senderId || !receiverId || !type || !message) {
+	async createNotification(senderId, receiverId, type, message, systemWide) {
+		if (!systemWide && !senderId) {
+			throw new Error("Missing required notification data, unable to create notification")
+		}
+		if (!receiverId || !type || !message) {
 			throw new Error(
 				"Missing required notification data, unable to create notification"
 			); // Note 1
@@ -27,7 +30,7 @@ class Notification {
 		}
 		await this.db("notifications")
 			.where({
-				sender_id: senderId,
+				sender_id: senderId || null,
 				receiver_id: receiverId,
 				type,
 			})

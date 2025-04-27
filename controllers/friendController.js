@@ -36,7 +36,8 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 			userId,
 			friendId,
 			"friendRequest",
-			`${username} sent you a friend request!`
+			`${username} sent you a friend request!`,
+			false
 		);
 
 		reply.code(StatusCodes.CREATED).send({ success: true });
@@ -49,7 +50,7 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		const {
 			user: { id: userId, username },
 		} = request.user;
-		const { requestSenderId, status } = await friendModel.handleRequest(
+		const { requestSenderId, requestSenderUsername, status } = await friendModel.handleRequest(
 			friendshipId,
 			userId,
 			action
@@ -78,7 +79,16 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 				userId,
 				requestSenderId,
 				"friendRequest",
-				`${username} has accepted your friend request!`
+				`${username} has accepted your friend request!`,
+				false
+			);
+
+			await notificationModel.createNotification(
+				null,
+				userId,
+				"friendRequest",
+				`You are now friends with ${requestSenderUsername}`,
+				true
 			);
 		}
 

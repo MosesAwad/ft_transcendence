@@ -18,7 +18,7 @@ const listUserOpts = {
 					type: "string",
 				},
 			},
-			required: ["page", "limit"], // Both are optional
+			required: ["page", "limit"],
 			oneOf: [
 				{ required: ["search"] }, // Either 'search' is required
 				{ required: ["tournament"] }, // Or 'tournament' is required

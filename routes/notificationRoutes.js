@@ -1,11 +1,18 @@
-// const {  } = require("../schemas/notificationSchemas");
+const { listNotificationOpts } = require("../schemas/notificationSchemas");
 
 async function notificationRoutes(fastify, options) {
 	const { notificationModel } = options;
 	const { listNotifications, updateNotification } =
 		require("../controllers/notificationController")(notificationModel);
 
-	fastify.get("/", { preHandler: fastify.authenticate }, listNotifications);
+	fastify.get(
+		"/",
+		{
+			preHandler: fastify.authenticate,
+			schema: listNotificationOpts.schema,
+		},
+		listNotifications
+	);
 
 	fastify.patch(
 		"/:notificationId",
