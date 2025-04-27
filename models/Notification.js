@@ -29,8 +29,40 @@ class Notification {
 			.where({
 				sender_id: senderId,
 				receiver_id: receiverId,
-                type
-			}).del();
+				type,
+			})
+			.del();
+	}
+
+	async listNotifications(page, limit, receiverId) {
+		const notifications = await this.db("notifications")
+			.where("receiver_id", receiverId)
+			.orderBy('updated_at', 'desc')	// descending meaning newest ("largest") date first
+			.limit(limit)
+			.offset((page - 1) * limit);
+
+		return notifications;
+	}
+
+	async markAsRead(notificationId, userId) {
+		const notification = await this.db("notifications")
+			.where("id", notificationId)
+			.first();
+		if (!notification) {
+			throw new CustomError.BadRequestError(
+				"No such notification was found"
+			);
+		}
+		if (notification.receiver_id !== userId) {
+			throw new CustomError.UnauthorizedError(
+				"You're not authorized to update this notification"
+			);
+		}
+		const updatedNotification = await this.db("notifications")
+			.where("id", notificationId)
+			.update({ is_read: 1 })
+			.returning("*");
+		return updatedNotification;
 	}
 }
 

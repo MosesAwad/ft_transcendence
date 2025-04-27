@@ -72,6 +72,7 @@ class Friend {
 			status,
 			updated_at: this.db.fn.now(),
 		});
+
 		return {
 			requestSenderId: friendship.user_id,
 			status,
@@ -91,18 +92,26 @@ class Friend {
 				"You're not authorized to respond to this request"
 			);
 		}
+		// Only the user can cancel a request that they sent, the receiver can abort by rejecting the request instead (in the handleRequest model method)
 		if (friendship.status === "pending" && friendship.user_id !== userId) {
 			throw new CustomError.UnauthorizedError(
 				"You're not authorized to delete this request"
 			);
 		}
-		const capture = {
-			pastStatus: friendship.status,
-			senderId: friendship.user_id,
-			receiverId: friendship.friend_id,
-		}; // if it was pending, we also want to delete the notification from the notifications table
+		// Note 2
+		const notificationDataCapture = {
+			senderId:
+				friendship.status === "pending"
+					? friendship.user_id
+					: friendship.friend_id,
+			receiverId:
+				friendship.status === "pending"
+					? friendship.friend_id
+					: friendship.user_id,
+		};
 		await this.db("friendships").where({ id: friendshipId }).del();
-		return capture;
+
+		return notificationDataCapture;
 	}
 
 	async listFriends(userId) {
@@ -113,15 +122,23 @@ class Friend {
 			.clone()
 			.where("friendships.user_id", userId)
 			.join("users", "friendships.friend_id", "users.id")
-			.select("users.id as userId", "users.username", "friendships.id as friendshipId");
+			.select(
+				"users.id as userId",
+				"users.username",
+				"friendships.id as friendshipId"
+			);
 
 		const q2 = baseQuery
 			.clone()
 			.where("friendships.friend_id", userId)
 			.join("users", "friendships.user_id", "users.id")
-			.select("users.id as userId", "users.username", "friendships.id as friendshipId");
+			.select(
+				"users.id as userId",
+				"users.username",
+				"friendships.id as friendshipId"
+			);
 
-		return q1.union(q2);
+		return q1.union(q2); // Note 3
 	}
 
 	async listRequests(userId, status, direction) {
@@ -183,8 +200,19 @@ module.exports = Friend;
 			which is what we want yeah, BUT in this case it worked out. Though it might not always work out 
 			like this, so it's best to be more explicit and to be aware of this capability.
 
-
 	Note 2
+
+		Notification A:
+			"User X (you) has sent you a friend request"
+		
+		Notification B:
+			"User Y has accepted YOUR friend request"
+
+		If status is 'pending', then I, the user using this controller was the sender of the notification (notification type A). 
+		However, if status is 'accepted', then I, the user using this controller sent the friend request BUT I am the actually the 
+		receiver of the notification, notification type B.
+
+	Note 3
 
 		The query we built with Knex in listFriends resolves to one single query which looks like this in plain SQL:
 

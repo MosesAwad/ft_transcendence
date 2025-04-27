@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const CustomError = require("../errors");
 
 class User {
 	constructor(db) {
@@ -27,6 +28,21 @@ class User {
 	async comparePassword(candidatePassword, userPassword) {
 		const isMatch = await bcrypt.compare(candidatePassword, userPassword);
 		return isMatch;
+	}
+
+	async listUsers(search, page, limit, userId) {
+		const baseQuery = this.db("users")
+			.where("username", "like", `%${search}%`) // `%` is for partial matching
+			.limit(limit)
+			.offset((page - 1) * limit);
+
+		let users = [];
+		if (search) {
+			// Exclude the userId if search is provided
+			users = await baseQuery.whereNot("id", userId); 
+		}
+
+		return users;
 	}
 }
 

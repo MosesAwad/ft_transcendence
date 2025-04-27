@@ -1,5 +1,4 @@
 const { StatusCodes } = require("http-status-codes");
-const bcrypt = require("bcryptjs");
 const CustomError = require("../errors");
 
 module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
@@ -81,14 +80,14 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 				"friendRequest",
 				`${username} has accepted your friend request!`
 			);
-		} else {
-			// Delete the notification stating that they sent you a friend request from your panel whenever you reject them
-			await notificationModel.deleteNotification(
-				requestSenderId,
-				userId,
-				"friendRequest"
-			);
 		}
+
+		// Note 1
+		await notificationModel.deleteNotification(
+			requestSenderId,
+			userId,
+			"friendRequest"
+		);
 
 		reply.send({ success: true });
 	},
@@ -102,13 +101,11 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		const capture = await friendModel.abortFriendship(friendshipId, userId);
 
 		// Notification handling
-		if (capture.pastStatus === "pending") {
-			await notificationModel.deleteNotification(
-				capture.senderId,
-				capture.receiverId,
-				"friendRequest"
-			);
-		}
+		await notificationModel.deleteNotification(
+			capture.senderId,
+			capture.receiverId,
+			"friendRequest"
+		);
 
 		reply.code(204).send();
 	},
@@ -144,4 +141,15 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		* (C) Handle if no such id in users table
 		* (C) Handle preventing a user from sending a friend request to someone who still has them on hold (the friend request exists and is already pending)
 		* (C) Handle preventing a user from sending a request to someone already in their friend's list
+*/
+
+/*
+	NOTES
+
+	Note 1
+
+		Delete the notification stating that they sent you a friend request from your panel whenever you reject them AND 
+		even when you accept their request, because it makes no sense to still see in your notifications panel that "user 
+		X has sent you a friend request" after you already became friends.
+
 */

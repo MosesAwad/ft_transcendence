@@ -12,7 +12,7 @@
 				display: flex;
 				flex-direction: row;
 				height: 100vh;
-				visibility: hidden; /* till the user authenticates */ 
+				visibility: hidden; /* till the user authenticates */
 				opacity: 0;
 			}
 			.sidebar {
@@ -91,6 +91,25 @@
 			#bellBtn[data-count]:not([data-count="0"])::after {
 				visibility: visible;
 			}
+			/* Search dropdown styling */
+			#userSearchResults {
+				max-height: 200px;
+				overflow-y: auto;
+				border: 1px solid #ccc;
+				background: white;
+				position: absolute;
+				width: calc(100% - 20px);
+				box-sizing: border-box;
+				border-radius: 5px;
+				display: none;
+			}
+			#userSearchResults li {
+				padding: 0.5rem;
+				cursor: pointer;
+			}
+			#userSearchResults li:hover {
+				background-color: #f1f1f1;
+			}
 		</style>
 	</head>
 	<body>
@@ -98,13 +117,14 @@
 			<h2>Friend Actions</h2>
 
 			<section>
-				<h3>Send Friend Request</h3>
+				<h3>Search User</h3>
 				<input
 					type="text"
-					id="friendEmail"
-					placeholder="Friend's Email"
+					id="userSearch"
+					placeholder="Search for a friend..."
 				/>
-				<button id="sendFriendRequestBtn">Send Request</button>
+				<ul id="userSearchResults"></ul>
+				<!-- Dropdown for search results -->
 			</section>
 
 			<section>

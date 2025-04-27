@@ -7,6 +7,7 @@ const connectDB = require("./connect/connect");
 const authRoutes = require("./routes/authRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const userRoutes = require("./routes/userRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const User = require("./models/User");
 const Token = require("./models/Token");
 const Friend = require("./models/Friend");
@@ -72,7 +73,11 @@ const start = async () => {
 			onlineUsers,
 			prefix: "api/v1/friendships",
 		});
-		fastify.register(userRoutes, { prefix: "api/v1/users" });
+		fastify.register(userRoutes, { userModel, prefix: "api/v1/users" });
+		fastify.register(notificationRoutes, {
+			notificationModel,
+			prefix: "api/v1/notifications",
+		});
 
 		// 6. Start server
 		await fastify.listen({ port: 3000 });
