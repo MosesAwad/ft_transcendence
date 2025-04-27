@@ -1,114 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Dashboard</title>
-	<style>
-		body {
-			font-family: sans-serif;
-			margin: 0;
-			padding: 0;
-			display: flex;
-			flex-direction: row;
-			height: 100vh;
-		}
-		.sidebar {
-			width: 300px;
-			background: #f1f1f1;
-			padding: 1rem;
-			overflow-y: auto;
-			border-right: 1px solid #ccc;
-		}
-		.main {
-			flex: 1;
-			padding: 1rem;
-			display: flex;
-			flex-direction: column;
-			position: relative;
-		}
-		section {
-			margin-bottom: 2rem;
-			border: 1px solid #ccc;
-			padding: 1rem;
-			border-radius: 5px;
-			background: white;
-		}
-		input, button {
-			display: block;
-			margin-bottom: 0.5rem;
-			padding: 0.5rem;
-			width: 100%;
-			box-sizing: border-box;
-		}
-		.notification-bell {
-			position: absolute;
-			top: 1rem;
-			right: 1rem;
-			cursor: pointer;
-		}
-		#notifications {
-			position: absolute;
-			top: 3rem;
-			right: 1rem;
-			width: 300px;
-			max-height: 400px;
-			overflow-y: auto;
-			border: 1px solid #ccc;
-			background: white;
-			padding: 1rem;
-			border-radius: 5px;
-			display: none;
-		}
-		.notification {
-			padding: 0.5rem;
-			border-bottom: 1px solid #eee;
-		}
-		.notification:last-child {
-			border-bottom: none;
-		}
-	</style>
-</head>
-<body>
-	<div class="sidebar">
-		<h2>Friend Actions</h2>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Dashboard</title>
+		<style>
+			body {
+				font-family: sans-serif;
+				margin: 0;
+				padding: 0;
+				display: flex;
+				flex-direction: row;
+				height: 100vh;
+				visibility: hidden; /* till the user authenticates */ 
+				opacity: 0;
+			}
+			.sidebar {
+				width: 300px;
+				background: #f1f1f1;
+				padding: 1rem;
+				overflow-y: auto;
+				border-right: 1px solid #ccc;
+			}
+			.main {
+				flex: 1;
+				padding: 1rem;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+			section {
+				margin-bottom: 2rem;
+				border: 1px solid #ccc;
+				padding: 1rem;
+				border-radius: 5px;
+				background: white;
+			}
+			input,
+			button {
+				display: block;
+				margin-bottom: 0.5rem;
+				padding: 0.5rem;
+				width: 100%;
+				box-sizing: border-box;
+			}
+			.notification-bell {
+				position: absolute;
+				top: 1rem;
+				right: 1rem;
+				cursor: pointer;
+			}
+			#notifications {
+				position: absolute;
+				top: 3rem;
+				right: 1rem;
+				width: 300px;
+				max-height: 400px;
+				overflow-y: auto;
+				border: 1px solid #ccc;
+				background: white;
+				padding: 1rem;
+				border-radius: 5px;
+				display: none;
+			}
+			.notification {
+				padding: 0.5rem;
+				border-bottom: 1px solid #eee;
+			}
+			.notification:last-child {
+				border-bottom: none;
+			}
+			#bellBtn::after {
+				content: attr(data-count);
+				position: absolute;
+				top: 0;
+				right: 0;
+				background: red;
+				color: white;
+				border-radius: 50%;
+				width: 1.2rem;
+				height: 1.2rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 0.8rem;
+				transform: translate(50%, -50%);
+				visibility: hidden;
+			}
 
-		<section>
-			<h3>Send Friend Request</h3>
-			<input type="text" id="friendEmail" placeholder="Friend's Email" />
-			<button id="sendFriendRequestBtn">Send Request</button>
-		</section>
+			#bellBtn[data-count]:not([data-count="0"])::after {
+				visibility: visible;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="sidebar">
+			<h2>Friend Actions</h2>
 
-		<section>
-			<h3>Incoming Requests</h3>
-			<ul id="incomingRequests"></ul>
-		</section>
+			<section>
+				<h3>Send Friend Request</h3>
+				<input
+					type="text"
+					id="friendEmail"
+					placeholder="Friend's Email"
+				/>
+				<button id="sendFriendRequestBtn">Send Request</button>
+			</section>
 
-		<section>
-			<h3>Outgoing Requests</h3>
-			<ul id="outgoingRequests"></ul>
-		</section>
+			<section>
+				<h3>Incoming Requests</h3>
+				<ul id="incomingRequests"></ul>
+			</section>
 
-		<section>
-			<h3>Friends</h3>
-			<ul id="friendsList"></ul>
-		</section>
-	</div>
+			<section>
+				<h3>Outgoing Requests</h3>
+				<ul id="outgoingRequests"></ul>
+			</section>
 
-	<div class="main">
-		<h1>Welcome to the Dashboard 👋</h1>
-		<button id="showUserBtn">Show Current User</button>
-		<button id="logoutBtn">Logout</button>
-
-		<div class="notification-bell" id="bellBtn">🔔</div>
-		<div id="notifications">
-			<em>No notifications yet.</em>
+			<section>
+				<h3>Friends</h3>
+				<ul id="friendsList"></ul>
+			</section>
 		</div>
-	</div>
 
-	<!-- Scripts -->
-	<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
-	<script src="utils.js"></script>
-	<script src="dashboard.js"></script>
-</body>
+		<div class="main">
+			<h1>Welcome to the Dashboard 👋</h1>
+			<button id="showUserBtn">Show Current User</button>
+			<button id="logoutBtn">Logout</button>
+
+			<div class="notification-bell" id="bellBtn">🔔</div>
+			<div id="notifications">
+				<em>No notifications yet.</em>
+			</div>
+		</div>
+
+		<!-- Scripts -->
+		<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+		<script src="utils.js"></script>
+		<script src="dashboard.js"></script>
+	</body>
 </html>

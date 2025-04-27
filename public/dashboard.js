@@ -1,4 +1,22 @@
+async function checkAuthentication() {
+	const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
+	return res.ok; // Returns true if authenticated, false otherwise
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+	// Run the authentication check before displaying content
+	checkAuthentication().then((isAuthenticated) => {
+		if (!isAuthenticated) {
+			// Not authenticated, redirect to login page
+			window.location.href = "index.html";
+			return;
+		}
+
+		// Show the body (dashboard content) if authenticated
+		document.body.style.visibility = "visible";
+		document.body.style.opacity = "1";
+	});
+
 	const logoutBtn = document.getElementById("logoutBtn");
 	const showUserBtn = document.getElementById("showUserBtn");
 	const bellBtn = document.getElementById("bellBtn");
@@ -72,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	});
 
-	// Load requests & friends
+	// Side views
 	async function loadFriendData() {
 		// ============= Incoming Requests Section =============
 		const incomingReqRes = await fetchWithAutoRefresh(
@@ -104,12 +122,15 @@ document.addEventListener("DOMContentLoaded", () => {
 			});
 
 			const rejectBtn = makeButton("Reject", async () => {
-				await fetchWithAutoRefresh(`${baseURL}/friendships/${item.friendshipId}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({ action: "reject" }),
-				});
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${item.friendshipId}`,
+					{
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({ action: "reject" }),
+					}
+				);
 				loadFriendData();
 			});
 
@@ -118,23 +139,35 @@ document.addEventListener("DOMContentLoaded", () => {
 			return li;
 		});
 
-		// renderList(outgoingList, data.outgoing, (item) => {
-		// 	const li = document.createElement("li");
-		// 	li.textContent = item.receiverEmail;
+		// ============= Outgoing Requests Section =============
+		const outgoingReqRes = await fetchWithAutoRefresh(
+			`${baseURL}/friendships?status=pending&direction=sent`,
+			{
+				credentials: "include",
+			}
+		);
+		if (!outgoingReqRes.ok) {
+			return;
+		}
+		const outgoingReqData = await outgoingReqRes.json();
+		renderList(outgoingList, outgoingReqData, (item) => {
+			const li = document.createElement("li");
+			li.textContent = item.senderUsername;
 
-		// 	const cancelBtn = makeButton("Cancel", async () => {
-		// 		await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-		// 			method: "POST",
-		// 			headers: { "Content-Type": "application/json" },
-		// 			credentials: "include",
-		// 			body: JSON.stringify({ id: item.id }),
-		// 		});
-		// 		loadFriendData();
-		// 	});
+			const cancelBtn = makeButton("Cancel", async () => {
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${item.friendshipId}`,
+					{
+						method: "DELETE",
+						credentials: "include",
+					}
+				);
+				loadFriendData();
+			});
 
-		// 	li.appendChild(cancelBtn);
-		// 	return li;
-		// });
+			li.appendChild(cancelBtn);
+			return li;
+		});
 
 		// ============= Friend List Section =============
 		const friendListRes = await fetchWithAutoRefresh(
@@ -146,19 +179,21 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!friendListRes.ok) {
 			return;
 		}
-		const friendListData = await friendListRes.json(); 
+		const friendListData = await friendListRes.json();
 
 		renderList(friendsList, friendListData, (item) => {
 			const li = document.createElement("li");
 			li.textContent = item.username;
 
+			console.log("friendship: ", item.friendshipId);
 			const removeBtn = makeButton("Remove", async () => {
-				await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({ id: item.id }),
-				});
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${item.friendshipId}`,
+					{
+						method: "DELETE",
+						credentials: "include",
+					}
+				);
 				loadFriendData();
 			});
 

@@ -113,13 +113,13 @@ class Friend {
 			.clone()
 			.where("friendships.user_id", userId)
 			.join("users", "friendships.friend_id", "users.id")
-			.select("users.id", "users.username");
+			.select("users.id as userId", "users.username", "friendships.id as friendshipId");
 
 		const q2 = baseQuery
 			.clone()
 			.where("friendships.friend_id", userId)
 			.join("users", "friendships.user_id", "users.id")
-			.select("users.id", "users.username");
+			.select("users.id as userId", "users.username", "friendships.id as friendshipId");
 
 		return q1.union(q2);
 	}
