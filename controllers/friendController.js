@@ -50,11 +50,8 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		const {
 			user: { id: userId, username },
 		} = request.user;
-		const { requestSenderId, requestSenderUsername, status } = await friendModel.handleRequest(
-			friendshipId,
-			userId,
-			action
-		);
+		const { requestSenderId, requestSenderUsername, status } =
+			await friendModel.handleRequest(friendshipId, userId, action);
 
 		// Notification handling
 		if (status === "accepted") {
@@ -74,6 +71,7 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 					`Request sent but user ${requestSenderId} is offline, can't send notification right now.`
 				);
 			}
+
 			// Send them a notification stating that they accepted your friend request
 			await notificationModel.createNotification(
 				userId,
@@ -83,21 +81,29 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 				false
 			);
 
+			// Delete the notification stating that they sent you a friend request
+			await notificationModel.deleteNotification(
+				requestSenderId,
+				userId,
+				"friendRequest"
+			);
+
 			await notificationModel.createNotification(
-				null,
+				requestSenderId,
 				userId,
 				"friendRequest",
 				`You are now friends with ${requestSenderUsername}`,
-				true
+				false
+			);
+		} else {
+			// This is the control path you hit when you decline a friend request
+			// Just delete the notification stating that they sent you a friend request, no need to create anything
+			await notificationModel.deleteNotification(
+				requestSenderId,
+				userId,
+				"friendRequest"
 			);
 		}
-
-		// Note 1
-		await notificationModel.deleteNotification(
-			requestSenderId,
-			userId,
-			"friendRequest"
-		);
 
 		reply.send({ success: true });
 	},
@@ -108,12 +114,15 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		const capture = await friendModel.abortFriendship(friendshipId, userId);
+		const exFriendIdCapture = await friendModel.abortFriendship(
+			friendshipId,
+			userId
+		);
 
 		// Notification handling
-		await notificationModel.deleteNotification(
-			capture.senderId,
-			capture.receiverId,
+		await notificationModel.deleteAllBilateralNotifications(
+			userId,
+			exFriendIdCapture,
 			"friendRequest"
 		);
 

@@ -14,6 +14,7 @@ class Notification {
 				"Missing required notification data, unable to create notification"
 			); // Note 1
 		}
+
 		await this.db("notifications").insert({
 			sender_id: senderId,
 			receiver_id: receiverId,
@@ -30,9 +31,29 @@ class Notification {
 		}
 		await this.db("notifications")
 			.where({
-				sender_id: senderId || null,
+				sender_id: senderId,
 				receiver_id: receiverId,
 				type,
+			})
+			.del();
+	}
+
+	async deleteAllBilateralNotifications(friend1Id, friend2Id, type) {
+		if (!friend1Id || !friend2Id || !type) {
+			throw new Error(
+				"Missing required notification data, unable to delete notifications"
+			); // Note 1 (ibid)
+		}
+		console.log("KOS_OM: ", friend1Id, "KOS_OMMEIN_OMM: ", friend2Id);
+		await this.db("notifications")
+			.where({
+				sender_id: friend1Id,
+				receiver_id: friend2Id,
+				type,
+			}).orWhere({
+				sender_id: friend2Id,
+				receiver_id: friend1Id,
+				type
 			})
 			.del();
 	}

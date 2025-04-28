@@ -25,8 +25,6 @@ exports.up = function (knex) {
 			.defaultTo("pending");
 
 		table.timestamps(true, true);
-
-		table.unique(["user_id", "friend_id"]); // Note 1
 	});
 };
 
@@ -37,21 +35,3 @@ exports.up = function (knex) {
 exports.down = function (knex) {
 	return knex.schema.dropTableIfExists("friendships");
 };
-
-/*
-    NOTES
-
-    Note 1
-    
-        SQL UNIQUE does not prevent strictly prevent bidirectional duplicates, it only applies in one direction. Here is what 
-        that means:
-
-            * user_id = 1, friend_id = 2 ✅
-            * user_id = 2, friend_id = 1 ❌ ← this is still allowed, because it's not the same tuple.
-
-        So what does it do?
-
-            SQL UNIQUE only applies to the exact combo in the given order.
-            So (1, 2) ≠ (2, 1) in its eyes.
-
-*/

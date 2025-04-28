@@ -98,26 +98,29 @@ class Friend {
 				"You're not authorized to respond to this request"
 			);
 		}
-		// Only the user can cancel a request that they sent, the receiver can abort by rejecting the request instead (in the handleRequest model method)
-		if (friendship.status === "pending" && friendship.user_id !== userId) {
+
+		let exFriendIdCapture = null;
+		if (friendship.status === "pending") {
+			// Only the user can cancel a request that they sent, the receiver can abort by rejecting the request instead (in the handleRequest model method)
+			if (friendship.user_id !== userId) {
+				throw new CustomError.UnauthorizedError(
+					"You're not authorized to delete this request"
+				);
+			}
+			exFriendIdCapture = friendship.friend_id;
+		} else if (friendship.status === "declined") {
 			throw new CustomError.UnauthorizedError(
 				"You're not authorized to delete this request"
 			);
-		}
-		// Note 2
-		const notificationDataCapture = {
-			senderId:
-				friendship.status === "pending"
-					? friendship.user_id
-					: friendship.friend_id,
-			receiverId:
-				friendship.status === "pending"
+		} else {
+			exFriendIdCapture =
+				userId === friendship.user_id
 					? friendship.friend_id
-					: friendship.user_id,
-		};
+					: friendship.user_id;
+		}
 		await this.db("friendships").where({ id: friendshipId }).del();
 
-		return notificationDataCapture;
+		return exFriendIdCapture;
 	}
 
 	async listFriends(userId) {
@@ -208,13 +211,17 @@ module.exports = Friend;
 
 	Note 2
 
-		Notification A:
+		Notification A [scenario where we aren't friends yet, and won't be because I'm cancelling the request in this controller]:
+			Status: "pending"
 			"User X (you) has sent you a friend request"
-		
-		Notification B:
-			"User Y has accepted YOUR friend request"
 
-		If status is 'pending', then I, the user using this controller was the sender of the notification (notification type A). 
+			If status is 'pending', then I, the user using this controller was the sender of the notification (notification type A).
+
+		Notification B [scenario where we are already friends but one of us decides to unfriend the other]:
+			Status: "accepted"
+			You get: "User Y has accepted YOUR friend request" [sender: User Y (him), receiver User X (you)]
+			He gets: "You are now friends with User X (you)" [sender: User X (him), receiver User Y (him)]
+ 
 		However, if status is 'accepted', then I, the user using this controller sent the friend request BUT I am the actually the 
 		receiver of the notification, notification type B.
 
