@@ -1,157 +1,101 @@
 const { StatusCodes } = require("http-status-codes");
 const CustomError = require("../errors");
 
-module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
-	// Send a friend request
-	createFriendship: async (request, reply) => {
-		const { friendId } = request.body;
-		const {
-			user: { id: userId, username },
-		} = request.user;
-		if (request.user.user.id === friendId) {
-			throw new CustomError.BadRequestError(
-				"Cannot send friend request to yourself"
-			);
-		}
-		await friendModel.sendRequest(userId, friendId);
-
-		// Notification handling
-		const targetSockets = onlineUsers.get(friendId); // After successful friend request, check if receiver is online
-		if (targetSockets) {
-			targetSockets.forEach((socketId) => {
-				io.to(socketId).emit("friendRequestInform", {
-					fromUserId: userId,
-					message: `${username} sent you a friend request!`,
-				});
-				console.log(
-					`Request notification sent to user ${friendId} on socket ${socketId}`
-				);
-			});
-		} else {
-			console.log(
-				`Request sent but user ${friendId} is offline, can't send notification right now.`
-			);
-		}
-		await notificationModel.createNotification(
-			userId,
-			friendId,
-			"friendRequest",
-			`${username} sent you a friend request!`,
-			false
+module.exports = (friendModel, notificationModel, io, onlineUsers) => {
+	const friendNotificationService =
+		require("../services/friendNotificationService")(
+			notificationModel,
+			io,
+			onlineUsers
 		);
 
-		reply.code(StatusCodes.CREATED).send({ success: true });
-	},
+	return {
+		// Send a friend request
+		createFriendship: async (request, reply) => {
+			const { friendId } = request.body;
+			const { user } = request.user;
 
-	// Accept or reject a request
-	updateFriendship: async (request, reply) => {
-		const { friendshipId } = request.params;
-		const { action } = request.body;
-		const {
-			user: { id: userId, username },
-		} = request.user;
-		const { requestSenderId, requestSenderUsername, status } =
-			await friendModel.handleRequest(friendshipId, userId, action);
+			await friendModel.sendRequest(user.id, friendId);
+			await friendNotificationService.notifyFriendRequestSent(
+				user,
+				friendId
+			);
+			reply.code(StatusCodes.CREATED).send({ success: true });
+		},
 
-		// Notification handling
-		if (status === "accepted") {
-			const targetSockets = onlineUsers.get(requestSenderId);
-			if (targetSockets) {
-				targetSockets.forEach((socketId) => {
-					io.to(socketId).emit("friendRequestAccept", {
-						fromUserId: userId,
-						message: `${username} has accepted your friend request!`,
-					});
-					console.log(
-						`Acceptance notification sent to user ${requestSenderId} on socket ${socketId}`
-					);
-				});
+		// Accept or reject a request
+		updateFriendship: async (request, reply) => {
+			const { friendshipId } = request.params;
+			const { action } = request.body;
+			const { user: receiverUser } = request.user;
+
+			const { senderUser, status } = await friendModel.handleRequest(
+				friendshipId,
+				receiverUser.id,
+				action
+			);
+
+			if (status === "accepted") {
+				await friendNotificationService.notfiyFriendRequestAccepted(
+					senderUser,
+					receiverUser
+				);
 			} else {
-				console.log(
-					`Request sent but user ${requestSenderId} is offline, can't send notification right now.`
+				await friendNotificationService.cleanUpRejectedRequest(
+					senderUser.id,
+					receiverUser.id
 				);
 			}
 
-			// Send them a notification stating that they accepted your friend request
-			await notificationModel.createNotification(
-				userId,
-				requestSenderId,
-				"friendRequest",
-				`${username} has accepted your friend request!`,
-				false
+			reply.send({ success: true });
+		},
+
+		// Cancel a pending request that you sent or delete a friendship
+		deleteFriendship: async (request, reply) => {
+			const { friendshipId } = request.params;
+			const {
+				user: { id: userId },
+			} = request.user;
+
+			const exFriendIdCapture = await friendModel.abortFriendship(
+				friendshipId,
+				userId
 			);
 
-			// Delete the notification stating that they sent you a friend request
-			await notificationModel.deleteNotification(
-				requestSenderId,
+			await friendNotificationService.cleanupBilateralRequestNotifications(
 				userId,
-				"friendRequest"
+				exFriendIdCapture
 			);
 
-			await notificationModel.createNotification(
-				requestSenderId,
+			reply.code(204).send();
+		},
+
+		// List all your friends
+		listFriends: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			const friends = await friendModel.listFriends(userId);
+
+			reply.send(friends);
+		},
+
+		// List pending outgoing requests (direction: sent) + List pending incoming requests (direction: received)
+		listRequests: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			const { status, direction } = request.query;
+			const requests = await friendModel.listRequests(
 				userId,
-				"friendRequest",
-				`You are now friends with ${requestSenderUsername}`,
-				false
+				status,
+				direction
 			);
-		} else {
-			// This is the control path you hit when you decline a friend request
-			// Just delete the notification stating that they sent you a friend request, no need to create anything
-			await notificationModel.deleteNotification(
-				requestSenderId,
-				userId,
-				"friendRequest"
-			);
-		}
 
-		reply.send({ success: true });
-	},
-
-	// Cancel a pending request that you sent or delete a friendship
-	deleteFriendship: async (request, reply) => {
-		const { friendshipId } = request.params;
-		const {
-			user: { id: userId },
-		} = request.user;
-		const exFriendIdCapture = await friendModel.abortFriendship(
-			friendshipId,
-			userId
-		);
-
-		// Notification handling
-		await notificationModel.deleteAllBilateralNotifications(
-			userId,
-			exFriendIdCapture,
-			"friendRequest"
-		);
-
-		reply.code(204).send();
-	},
-
-	listFriends: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-		const friends = await friendModel.listFriends(userId);
-
-		reply.send(friends);
-	},
-
-	listRequests: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-		const { status, direction } = request.query;
-		const requests = await friendModel.listRequests(
-			userId,
-			status,
-			direction
-		);
-
-		reply.send(requests);
-	},
-});
+			reply.send(requests);
+		},
+	};
+};
 
 /*
 	TO DO
@@ -170,5 +114,4 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => ({
 		Delete the notification stating that they sent you a friend request from your panel whenever you reject them AND 
 		even when you accept their request, because it makes no sense to still see in your notifications panel that "user 
 		X has sent you a friend request" after you already became friends.
-
 */

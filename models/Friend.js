@@ -4,25 +4,41 @@ class Friend {
 		this.db = db;
 	}
 
+	/*
+		==================== Purpose ====================
+						Send a friend request
+		==================================================
+	*/
 	async sendRequest(senderId, receiverId) {
+		// Validation
 		const user = await this.db("users").where({ id: receiverId }).first();
 		if (!user) {
 			throw new CustomError.NotFoundError(
 				"Invalid reciever id, unable to send request"
 			);
 		}
+
+		if (senderId === receiverId) {
+			throw new CustomError.BadRequestError(
+				"Cannot send friend request to yourself"
+			);
+		}
+
 		const friendshipExists = await this.db("friendships")
 			.where(function () {
 				// Note 1
 				this.where({
 					user_id: senderId,
 					friend_id: receiverId,
+					status: "accepted"
 				}).orWhere({
 					user_id: receiverId,
 					friend_id: senderId,
+					status: "accepted"
 				});
 			})
 			.first();
+		console.log("friendship: ", friendshipExists);
 		if (friendshipExists) {
 			if (friendshipExists.status === "accepted") {
 				throw new CustomError.BadRequestError(
@@ -40,18 +56,25 @@ class Friend {
 				}
 			}
 		}
+
+		// Create friendship if validation succeeds
 		await this.db("friendships").insert({
 			user_id: senderId,
 			friend_id: receiverId,
 		});
 	}
 
-	// Accept or reject a request
+	/*
+		==================== Purpose ====================
+					Accept or reject a request
+		==================================================
+	*/
 	async handleRequest(friendshipId, receiverId, action) {
-		// Find the friendship
 		const friendship = await this.db("friendships")
 			.where({ id: friendshipId })
 			.first();
+
+		// Validation
 		if (!friendship) {
 			throw new CustomError.NotFoundError("No such request was found");
 		}
@@ -73,23 +96,36 @@ class Friend {
 			updated_at: this.db.fn.now(),
 		});
 
-		const { username: requestSenderUsername } = await this.db("users")
+		// Get the sender's username
+		const { username } = await this.db("users")
 			.where({ id: friendship.user_id })
 			.select("username")
 			.first();
 
+		// Store sender details in an object
+		const senderUser = {
+			id: friendship.user_id,
+			username,
+		};
+
 		return {
-			requestSenderId: friendship.user_id,
-			requestSenderUsername,
+			senderUser,
 			status,
 		};
 	}
 
-	// Cancel a pending request that you sent or delete a friendship
+	/*
+		==================== Purpose ====================
+				* Cancel a pending request that you sent
+				* Delete a friendship
+		==================================================
+	*/
 	async abortFriendship(friendshipId, userId) {
 		const friendship = await this.db("friendships")
 			.where({ id: friendshipId })
 			.first();
+
+		// Validation
 		if (!friendship) {
 			throw new CustomError.NotFoundError("No such request was found");
 		}
@@ -98,31 +134,41 @@ class Friend {
 				"You're not authorized to respond to this request"
 			);
 		}
-
 		let exFriendIdCapture = null;
+		// Validation: If status is pending, only sender can cancel the request (to unfriend an existing friend, use handleRequest instead)
 		if (friendship.status === "pending") {
-			// Only the user can cancel a request that they sent, the receiver can abort by rejecting the request instead (in the handleRequest model method)
 			if (friendship.user_id !== userId) {
 				throw new CustomError.UnauthorizedError(
 					"You're not authorized to delete this request"
 				);
 			}
 			exFriendIdCapture = friendship.friend_id;
-		} else if (friendship.status === "declined") {
+		}
+		// Validation: Prevent any user from deleting a declined request
+		else if (friendship.status === "declined") {
 			throw new CustomError.UnauthorizedError(
 				"You're not authorized to delete this request"
 			);
-		} else {
+		}
+		// Validation: obtain the ex-friend's user id
+		else {
 			exFriendIdCapture =
 				userId === friendship.user_id
 					? friendship.friend_id
 					: friendship.user_id;
 		}
+
+		// Delete the pending request or unfriend the user
 		await this.db("friendships").where({ id: friendshipId }).del();
 
 		return exFriendIdCapture;
 	}
 
+	/*
+		==================== Purpose ====================
+						List all your friends
+		==================================================
+	*/
 	async listFriends(userId) {
 		// Note 2
 		const baseQuery = this.db("friendships").where("status", "accepted");
@@ -150,8 +196,14 @@ class Friend {
 		return q1.union(q2); // Note 3
 	}
 
+	/*
+		==================== Purpose ====================
+				* List pending outgoing requests (direction: sent)
+				* List pending incoming requests (direction: received)
+		==================================================
+	*/
 	async listRequests(userId, status, direction) {
-		const baseQuery = this.db("friendships").where("status", status);
+		const baseQuery = this.db("friendships").where("status", status); // status is always "pending" at this endpoint, enforced by listFriendshipOpts 
 		if (direction === "sent") {
 			return baseQuery
 				.clone()
