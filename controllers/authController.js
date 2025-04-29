@@ -14,10 +14,14 @@ const createJWT = (fastify, payload, expiresIn) => {
 	return fastify.jwt.sign(payload, { expiresIn }); // payload must be an object (fastify.jwt.sign automatically adds iat and exp timestamps)
 };
 
+/*
+	5m | new Date(Date.now() + 5 * 60 * 1000)
+	1d | new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+*/
 const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 	const accessToken = createJWT(fastify, { user }, "5m"); // must match cookie expiration below
 	reply.setCookie("accessToken", accessToken, {
-		path: "/", // Makes cookie available to ALL routes
+		path: "/api/v1", // Makes cookie available to ALL routes
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
@@ -101,7 +105,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 
 		await tokenModel.deleteRefreshToken(userId, deviceId); // Note 3
 		reply.setCookie("accessToken", "logout", {
-			path: "/",
+			path: "/api/v1",
 			httpOnly: true,
 			expires: new Date(Date.now()),
 		});
