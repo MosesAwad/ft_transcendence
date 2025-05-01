@@ -44,7 +44,6 @@ class Notification {
 				"Missing required notification data, unable to delete notifications"
 			); // Note 1 (ibid)
 		}
-		console.log("KOS_OM: ", friend1Id, "KOS_OMMEIN_OMM: ", friend2Id);
 		await this.db("notifications")
 			.where({
 				sender_id: friend1Id,

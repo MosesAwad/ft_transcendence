@@ -1,6 +1,9 @@
 require("dotenv").config();
 const fastify = require("fastify")({
-	logger: true,
+	// logger: true,
+	logger: {
+		level: "error",
+	},
 });
 const path = require("path");
 const connectDB = require("./connect/connect");

@@ -21,7 +21,7 @@ const createJWT = (fastify, payload, expiresIn) => {
 const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 	const accessToken = createJWT(fastify, { user }, "5m"); // must match cookie expiration below
 	reply.setCookie("accessToken", accessToken, {
-		path: "/", // Makes cookie available to ALL routes
+		path: "/", // Makes cookie available to ALL routes [see Note 0]
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
@@ -105,7 +105,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 
 		await tokenModel.deleteRefreshToken(userId, deviceId); // Note 3
 		reply.setCookie("accessToken", "logout", {
-			path: "/api/v1",
+			path: "/",
 			httpOnly: true,
 			expires: new Date(Date.now()),
 		});
@@ -189,6 +189,16 @@ module.exports = (userModel, tokenModel, fastify) => ({
 
 /*
   Notes
+
+  Note 0
+	
+	If you don't set the path of the accessToken cookie to "/", and you decide to restrict it to "/api/v1", then 
+	sockets from the front-end won't be able to send accessToken cookies because they are trying to connect to 
+	http://localhost:3000 and not http://localhost:3000/api/v1. This is how the connection is made on the front-end:
+		
+		const socket = io("http://localhost:3000", {
+			withCredentials: true,
+		});
 
   Note 1
 
