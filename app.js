@@ -71,12 +71,12 @@ const start = async () => {
 			notificationModel,
 			io,
 			onlineUsers,
-			prefix: "api/v1/friendships",
+			prefix: "/api/v1/friendships",
 		});
-		fastify.register(userRoutes, { userModel, prefix: "api/v1/users" });
+		fastify.register(userRoutes, { userModel, prefix: "/api/v1/users" });
 		fastify.register(notificationRoutes, {
 			notificationModel,
-			prefix: "api/v1/notifications",
+			prefix: "/api/v1/notifications",
 		});
 
 		// 6. Start server

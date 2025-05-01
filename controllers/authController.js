@@ -21,7 +21,7 @@ const createJWT = (fastify, payload, expiresIn) => {
 const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 	const accessToken = createJWT(fastify, { user }, "5m"); // must match cookie expiration below
 	reply.setCookie("accessToken", accessToken, {
-		path: "/api/v1", // Makes cookie available to ALL routes
+		path: "/", // Makes cookie available to ALL routes
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
@@ -31,7 +31,7 @@ const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 
 	const refreshToken = createJWT(fastify, { user, refreshTokenId }, "1d"); // must match cookie expriation below
 	reply.setCookie("refreshToken", refreshToken, {
-		path: "api/v1/auth/refresh", // Makes cookie available to ALL routes
+		path: "/api/v1/auth/refresh", // Makes cookie available to ALL routes
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
