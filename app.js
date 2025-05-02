@@ -82,9 +82,16 @@ const start = async () => {
 			prefix: "/api/v1/notifications",
 		});
 
-		// 6. Start server
-		await fastify.listen({ port: 3000 });
-		console.log("Server running on http://localhost:3000");
+		// 6. Start server with dual-stack support
+		const address = await fastify.listen({
+			port: 3000,
+			host: "0.0.0.0", // Only IPv4
+		});
+		console.log("Server running on ", address);
+
+		setInterval(() => {
+			console.log(onlineUsers);
+		}, 5000);
 	} catch (err) {
 		console.log(err.message);
 		process.exit(1);

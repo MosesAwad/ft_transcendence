@@ -5,7 +5,7 @@ class Token {
 
 	async findByUserIdAndDeviceId(userId, deviceId) {
 		const refreshToken = await this.db("tokens")
-			.where({ user_id: userId, device_id: deviceId })
+			.where({ user_id: userId, device_id: deviceId, is_valid: 1 })
 			.first();
 		return refreshToken;
 	}
@@ -42,6 +42,12 @@ class Token {
 			.update({ updated_at: this.db.raw("CURRENT_TIMESTAMP") })
 			.returning("*");
 		return updatedToken;
+	}
+
+	async invalidateRefreshToken(refreshTokenId) {
+		await this.db("tokens")
+			.where("refresh_token_id", refreshTokenId)
+			.update({ is_valid: 0 });
 	}
 
 	async deleteRefreshToken(userId, deviceId) {
