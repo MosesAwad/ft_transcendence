@@ -39,6 +39,11 @@ const start = async () => {
 		const notificationModel = new Notification(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
+		fastify.register(require("@fastify/cors"), {
+			origin: true,
+			method: ["GET", "POST", "HEAD"]
+		});
+
 		fastify.register(fastifyStatic, {
 			root: path.join(__dirname, "public"),
 			prefix: "/", // Note 1
@@ -85,7 +90,7 @@ const start = async () => {
 		// 6. Start server with dual-stack support
 		const address = await fastify.listen({
 			port: 3000,
-			host: "0.0.0.0", // Only IPv4
+			// host: "0.0.0.0", // Only IPv4
 		});
 		console.log("Server running on ", address);
 

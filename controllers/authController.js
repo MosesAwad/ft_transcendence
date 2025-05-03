@@ -2,6 +2,14 @@ const { StatusCodes } = require("http-status-codes");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const CustomError = require("../errors");
+const { ref } = require("process");
+
+/*
+	INSTRUCTIONS FOR FRONT-END:
+
+	1*	The front-end should generate a deviceId upon log-in page load and save it in local storage. If one already exists, it 
+		should not create a new one. 
+*/
 
 const createPayload = (user) => {
 	return {
@@ -64,9 +72,10 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		}
 
 		const userPayload = createPayload(user);
+		console.log("(", user.id, ",", deviceId, ")");
 		const existingToken = await tokenModel.findByUserIdAndDeviceId(
 			user.id,
-			deviceId,
+			deviceId
 		);
 
 		// 👇 Control path: If refresh token exists and specifically for the device the user is trying to log into now
@@ -157,7 +166,11 @@ module.exports = (userModel, tokenModel, fastify) => ({
 
 		const { deviceId } = request.body;
 		// 👇 Control path if neither refresh token nor access token can be found, or no access token but refresh token is invalid (admin set it due to malicous behavior) even though present
-		if (!existingToken || !existingToken?.is_valid || existingToken.device_id !== deviceId) {
+		if (
+			!existingToken ||
+			!existingToken?.is_valid ||
+			existingToken.device_id !== deviceId	// Even if attacker intercepted our refreshToken cookie, he still needs our deviceId (additional layer of security)
+		) {
 			throw new CustomError.UnauthenticatedError(
 				"Authentication Invalid"
 			);
@@ -286,4 +299,11 @@ module.exports = (userModel, tokenModel, fastify) => ({
 				valid: true or false,         // Whether the signature is valid
 				value: 'original_value_here'  // The actual cookie content (unsigned)
 			}
+		
+		Also, @fastify/jwt is so good it automatically bakes "iat" and "exp" into the JWT and so, if an attacker attempts to used an expired refreshToken, 
+		fastify.jwt.verify would automatically detect that for us. This is espacially important because sometimes, when the user closes an incongito window 
+		without hitting the logout button, his cookie never gets deleted from our database; we lose access to it and its is_valid will always be true. Additionally, 
+		if the refreshToken just expires and before logging in again, he lost lost the device id (cleared his localstorage for example), upon log-in, we lost access 
+		to the refreshToken that expired and so we never get to invalidate it. That is why we also rely on the expiry date, not just our is_valid boolean, this way 
+		we ensure that no replay attack is possible even if the refreshToken somehow got leaked.
 */

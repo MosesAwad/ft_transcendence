@@ -2,6 +2,7 @@ const {
 	registerOpts,
 	loginOpts,
 	logoutOpts,
+	refreshOpts,
 } = require("../schemas/authSchemas");
 
 async function authRoutes(fastify, options) {
@@ -27,7 +28,7 @@ async function authRoutes(fastify, options) {
 		},
 		logout
 	);
-	fastify.post("/refresh", refresh);
+	fastify.post("/refresh", refreshOpts, refresh);
 }
 
 module.exports = authRoutes;

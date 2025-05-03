@@ -73,11 +73,22 @@ const logoutOpts = {
 };
 
 const refreshOpts = {
-
+	body: {
+		type: "object",
+		properties: {
+			deviceId: {
+				type: "string",
+				pattern:
+					"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+			},
+		},
+		required: ["deviceId"],
+	},
 }
 
 module.exports = {
 	registerOpts,
 	loginOpts,
 	logoutOpts,
+	refreshOpts
 };

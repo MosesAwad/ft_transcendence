@@ -30,16 +30,18 @@ class Friend {
 				this.where({
 					user_id: senderId,
 					friend_id: receiverId,
-					status: "accepted"
-				}).orWhere({
-					user_id: receiverId,
-					friend_id: senderId,
-					status: "accepted"
-				});
+				})
+					.whereIn("status", ["accepted", "pending"])
+					.orWhere({
+						user_id: receiverId,
+						friend_id: senderId,
+					})
+					.whereIn("status", ["accepted", "pending"]);
 			})
 			.first();
-		console.log("friendship: ", friendshipExists);
 		if (friendshipExists) {
+			console.log(friendshipExists);
+			console.log(friendshipExists.status);
 			if (friendshipExists.status === "accepted") {
 				throw new CustomError.BadRequestError(
 					"You are already friends with this user"
@@ -203,7 +205,7 @@ class Friend {
 		==================================================
 	*/
 	async listRequests(userId, status, direction) {
-		const baseQuery = this.db("friendships").where("status", status); // status is always "pending" at this endpoint, enforced by listFriendshipOpts 
+		const baseQuery = this.db("friendships").where("status", status); // status is always "pending" at this endpoint, enforced by listFriendshipOpts
 		if (direction === "sent") {
 			return baseQuery
 				.clone()

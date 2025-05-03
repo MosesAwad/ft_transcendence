@@ -10,8 +10,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		const email = document.getElementById("email").value;
 		const password = document.getElementById("password").value;
 
-		deviceId = generateDeviceId();
-		localStorage.setItem("deviceId", deviceId);
+		deviceId = localStorage.getItem("deviceId");
+		if (!deviceId) {
+			deviceId = generateDeviceId();
+			localStorage.setItem("deviceId", deviceId);
+		}
 
 		const res = await fetch(`${baseURL}/auth/login`, {
 			method: "POST",
