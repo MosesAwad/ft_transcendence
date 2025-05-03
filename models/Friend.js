@@ -137,20 +137,22 @@ class Friend {
 			);
 		}
 		let exFriendIdCapture = null;
+		let newStatus = null;
 		// Validation: If status is pending, only sender can cancel the request (to unfriend an existing friend, use handleRequest instead)
 		if (friendship.status === "pending") {
 			if (friendship.user_id !== userId) {
 				throw new CustomError.UnauthorizedError(
-					"You're not authorized to delete this request"
+					"You're not authorized to perform this action!"
 				);
 			}
 			exFriendIdCapture = friendship.friend_id;
+			newStatus = "cancelled";
 		}
 		// Validation: Prevent any user from deleting a declined request
 		else if (friendship.status === "declined") {
-			throw new CustomError.UnauthorizedError(
-				"You're not authorized to delete this request"
-			);
+			throw new CustomError.BadRequestError(
+				"This friend request has already been declined and cannot be modified!"
+			  );
 		}
 		// Validation: obtain the ex-friend's user id
 		else {
@@ -158,10 +160,13 @@ class Friend {
 				userId === friendship.user_id
 					? friendship.friend_id
 					: friendship.user_id;
+			newStatus = "unfriended";
 		}
 
 		// Delete the pending request or unfriend the user
-		await this.db("friendships").where({ id: friendshipId }).del();
+		await this.db("friendships")
+			.where({ id: friendshipId })
+			.update({ status: newStatus });
 
 		return exFriendIdCapture;
 	}
