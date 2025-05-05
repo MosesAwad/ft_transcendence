@@ -41,7 +41,8 @@ const start = async () => {
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
 		fastify.register(require("@fastify/cors"), {
 			origin: true,
-			method: ["GET", "POST", "HEAD"]
+			method: ["GET", "POST", "HEAD"],
+			// credentials: true
 		});
 
 		fastify.register(fastifyStatic, {
