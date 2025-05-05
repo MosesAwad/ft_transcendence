@@ -6,7 +6,8 @@ const {
 } = require("../schemas/friendshipSchemas");
 
 async function friendRoutes(fastify, options) {
-	const { friendModel, notificationModel, io, onlineUsers } = options;
+	const { friendModel, notificationModel, onlineUsers } = options;
+	const io = fastify.io;
 	const {
 		createFriendship,
 		updateFriendship,

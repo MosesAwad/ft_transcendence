@@ -3,8 +3,11 @@ const jwt = require("jsonwebtoken");
 
 const onlineUsers = new Map();
 
-function handleSocketConnection(io) {
-	io.on("connection", (socket) => {
+function handleSocketConnection(fastify) {
+	fastify.io.on("connection", (socket) => {
+
+		console.log('Client connected from', socket.handshake.address);
+
 		const rawCookieHeader = socket.handshake.headers.cookie;
 		if (!rawCookieHeader) {
 			console.log(

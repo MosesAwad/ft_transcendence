@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		const res = await fetch(`${baseURL}/auth/login`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			credentials: "include",
+			// credentials: "include", // NO NEED FOR THIS, IT'S THE LOGIN ROUTE, WHY SEND CREDENTIALS?
 			body: JSON.stringify({ email, password, deviceId }),
 		});
 

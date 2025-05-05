@@ -16,6 +16,7 @@ let notificationCount = 0;
 
 /* NOTIFICATION SECTION */
 
+console.log('Trying to connect to:', window.location.hostname);
 const socket = io("http://localhost:3000", {
 	withCredentials: true,
 });

@@ -40,9 +40,9 @@ const start = async () => {
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
 		fastify.register(require("@fastify/cors"), {
-			origin: true,
+			origin: ["http://127.0.0.1:3000"],
 			method: ["GET", "POST", "HEAD"],
-			// credentials: true
+			credentials: true
 		});
 
 		fastify.register(fastifyStatic, {
@@ -63,7 +63,8 @@ const start = async () => {
 
 		// 4. Set up Socket.io
 		const io = socketIo(fastify.server); // Attach Socket.io to Fastify's server instance
-		handleSocketConnection(io);
+		fastify.decorate("io", io);
+		handleSocketConnection(fastify);
 
 		setInterval(() => {
 			console.log(onlineUsers);
@@ -78,7 +79,6 @@ const start = async () => {
 		fastify.register(friendRoutes, {
 			friendModel,
 			notificationModel,
-			io,
 			onlineUsers,
 			prefix: "/api/v1/friendships",
 		});
@@ -91,7 +91,11 @@ const start = async () => {
 		// 6. Start server with dual-stack support
 		const address = await fastify.listen({
 			port: 3000,
-			// host: "0.0.0.0", // Only IPv4
+			host: "::",
+		});
+
+		fastify.server.on("connection", (socket) => {
+			console.log("New connection from:", socket.remoteAddress);
 		});
 		console.log("Server running on ", address);
 
