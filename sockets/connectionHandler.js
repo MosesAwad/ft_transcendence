@@ -11,7 +11,7 @@ function handleSocketConnection(fastify) {
 		const rawCookieHeader = socket.handshake.headers.cookie;
 		if (!rawCookieHeader) {
 			console.log(
-				"No accessToken cookie was fond OR client did not initialize socket with the following option withCredentials: true"
+				"No accessToken cookie was found OR client did not initialize socket with the following option withCredentials: true"
 			);
 			socket.disconnect();
 			return;

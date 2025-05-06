@@ -19,6 +19,9 @@ const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
 const fastifyStatic = require("@fastify/static");
 
+// jobs
+const cleanUpTokensJob = require("./jobs/cleanUpTokensJob");
+
 // socket dependencies
 const socketIo = require("socket.io");
 const {
@@ -42,7 +45,7 @@ const start = async () => {
 		fastify.register(require("@fastify/cors"), {
 			origin: ["http://127.0.0.1:3000"],
 			method: ["GET", "POST", "HEAD"],
-			credentials: true
+			credentials: true,
 		});
 
 		fastify.register(fastifyStatic, {
@@ -66,10 +69,6 @@ const start = async () => {
 		fastify.decorate("io", io);
 		handleSocketConnection(fastify);
 
-		setInterval(() => {
-			console.log(onlineUsers);
-		}, 5000);
-
 		// 5. Register routes
 		fastify.register(authRoutes, {
 			userModel,
@@ -91,17 +90,27 @@ const start = async () => {
 		// 6. Start server with dual-stack support
 		const address = await fastify.listen({
 			port: 3000,
-			host: "::",
+			host: "0.0.0.0",
 		});
 
+		console.log("Server running on ", address);
+
+		// 7. Console log the addresses of a socket each time a new one connects to our server
 		fastify.server.on("connection", (socket) => {
 			console.log("New connection from:", socket.remoteAddress);
 		});
-		console.log("Server running on ", address);
 
+		// 8. Display online users in the console at regular intervals
 		setInterval(() => {
 			console.log(onlineUsers);
-		}, 5000);
+		}, 5 * 1000);
+
+		// 9. Clean up stale refresh tokens from db at regular intervals
+		cleanUpTokensJob(tokenModel);
+		setInterval(() => {
+			cleanUpTokensJob(tokenModel);
+		}, 5 * 60 * 1000);
+
 	} catch (err) {
 		console.log(err.message);
 		process.exit(1);

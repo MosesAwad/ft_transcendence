@@ -58,10 +58,11 @@ class Token {
 	}
 
 	// Note 1
-	async deleteExpiredTokens(overstayDate) {
-		return await this.db("tokens")
-			.where("updated_at", "<", overstayDate)
-			.del();
+	async invalidateExpiredTokens(expiryThreshold) {
+		await this.db("tokens")
+			.where("created_at", "<", expiryThreshold)
+			.andWhere("is_valid", 1)
+			.update({ is_valid: 0 });
 	}
 }
 
