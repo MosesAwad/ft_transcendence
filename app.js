@@ -15,9 +15,11 @@ const User = require("./models/User");
 const Token = require("./models/Token");
 const Friend = require("./models/Friend");
 const Notification = require("./models/Notification");
+
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
 const fastifyStatic = require("@fastify/static");
+const oauthPlugin = require("@fastify/oauth2");
 
 // jobs
 const cleanUpTokensJob = require("./jobs/cleanUpTokensJob");
@@ -41,7 +43,7 @@ const start = async () => {
 		const tokenModel = new Token(db);
 		const notificationModel = new Notification(db);
 
-		// 3. Register plugins (Must register fastifyCookie before fastifyJwt)
+		// 3. Register plugins (Must register fastifyCookie before fastifyJwt and oauthPlugin)
 		fastify.register(require("@fastify/cors"), {
 			origin: ["http://127.0.0.1:3000"],
 			method: ["GET", "POST", "HEAD"],
@@ -62,6 +64,21 @@ const start = async () => {
 				signed: true,
 			},
 		});
+
+		fastify.register(oauthPlugin, {
+			name: "googleOAuth2",
+			scope: ['profile', 'email'], // refers to Google's /auth/userinfo.email and /auth/userinfo.profile
+			credentials: {
+				client: {
+					id: process.env.GOOGLE_CLIENT_ID,
+					secret: process.env.GOOGLE_CLIENT_SECRET,
+				},
+				auth: oauthPlugin.GOOGLE_CONFIGURATION,
+			},
+			startRedirectPath: "/api/v1/auth/google/login", // register a fastify url to start the redirect flow to the service provider's OAuth2 login
+			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
+		});
+
 		fastify.register(require("./plugins/authentication"));
 
 		// 4. Set up Socket.io
@@ -110,7 +127,6 @@ const start = async () => {
 		setInterval(() => {
 			cleanUpTokensJob(tokenModel);
 		}, 5 * 60 * 1000);
-
 	} catch (err) {
 		console.log(err.message);
 		process.exit(1);

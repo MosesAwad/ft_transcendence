@@ -122,6 +122,26 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		reply.send({ user: { id: user.id, username: user.username } });
 	},
 
+	googleCallback: async function (request, reply) {
+		const { token } =
+			await this.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(
+				request
+			); // 'this' must refer to the fastify instance, NO arrow function here
+
+		// You now have token.access_token, you can fetch user info using it
+		const userResponse = await fetch(
+			"https://www.googleapis.com/oauth2/v2/userinfo",
+			{
+				headers: {
+					Authorization: `Bearer ${token.access_token}`,
+				},
+			}
+		);
+		const userInfo = await userResponse.json();
+
+		reply.send({ message: "Logged in with Google", user: userInfo });
+	},
+
 	logout: async (request, reply) => {
 		const { deviceId } = request.body;
 		const { id: userId } = request.user.user;
@@ -169,7 +189,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		if (
 			!existingToken ||
 			!existingToken?.is_valid ||
-			existingToken.device_id !== deviceId	// Even if attacker intercepted our refreshToken cookie, he still needs our deviceId (additional layer of security)
+			existingToken.device_id !== deviceId // Even if attacker intercepted our refreshToken cookie, he still needs our deviceId (additional layer of security)
 		) {
 			throw new CustomError.UnauthenticatedError(
 				"Authentication Invalid"

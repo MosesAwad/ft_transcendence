@@ -7,7 +7,7 @@ const {
 
 async function authRoutes(fastify, options) {
 	const { userModel, tokenModel } = options;
-	const { errorHandler, register, login, logout, refresh } =
+	const { errorHandler, register, login, googleCallback, logout, refresh } =
 		require("../controllers/authController")(
 			userModel,
 			tokenModel,
@@ -20,6 +20,9 @@ async function authRoutes(fastify, options) {
 	// set the endpoints
 	fastify.post("/register", registerOpts, register);
 	fastify.post("/login", loginOpts, login);
+
+	fastify.get("/google/callback", googleCallback.bind(fastify));
+
 	fastify.post(
 		"/logout",
 		{
@@ -28,6 +31,7 @@ async function authRoutes(fastify, options) {
 		},
 		logout
 	);
+
 	fastify.post("/refresh", refreshOpts, refresh);
 }
 
