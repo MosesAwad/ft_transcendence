@@ -7,6 +7,12 @@ class User {
 	}
 
 	async createUser({ username, email, password }) {
+		const user = await this.db("users")
+			.where({ email, google_id: null })
+			.first();
+		if (user) {
+			throw new CustomError.BadRequestError("Email already in use!");
+		}
 		const salt = await bcrypt.genSalt(10);
 		const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -17,11 +23,25 @@ class User {
 				password: hashedPassword,
 			})
 			.returning("id"); // SQLite returns id automatically
-		return { id, username, email, hashedPassword };
+		return { id, username, email };
 	}
 
-	async findByEmail(email) {
-		const user = await this.db("users").where("email", email).first();
+	async createGoogleUser({ googleId, email, username }) {
+
+		const [{ id }] = await this.db("users")
+			.insert({
+				username,
+				email,
+				google_id: googleId
+			})
+			.returning("id"); // SQLite returns id automatically
+		return { id, username, email };
+	}
+
+	async findByEmail(email, googleId = null) {
+		const user = await this.db("users")
+			.where({ email, google_id: googleId })
+			.first();
 		return user;
 	}
 
@@ -39,7 +59,7 @@ class User {
 		let users = [];
 		if (search) {
 			// Exclude the userId if search is provided
-			users = await baseQuery.whereNot("id", userId); 
+			users = await baseQuery.whereNot("id", userId);
 		}
 
 		return users;

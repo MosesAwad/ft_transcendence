@@ -2,8 +2,9 @@ let deviceId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
 	const loginForm = document.getElementById("loginForm");
-
 	if (!loginForm) return;
+	const googleBtn = document.getElementById("googleLoginBtn");
+
 
 	loginForm.addEventListener("submit", async (e) => {
 		e.preventDefault();
@@ -29,5 +30,19 @@ document.addEventListener("DOMContentLoaded", () => {
 			const err = await res.text();
 			alert(`Login failed ❌\n${err}`);
 		}
+	});
+
+	googleBtn.addEventListener("click", () => {
+		let deviceId = localStorage.getItem("deviceId");
+		if (!deviceId) {
+			deviceId = generateDeviceId();
+			localStorage.setItem("deviceId", deviceId);
+		}
+
+		// Generate a state string containing the deviceId (for security, consider encoding it)
+		const state = encodeURIComponent(JSON.stringify({ deviceId }));
+
+		// Send the state parameter along with the redirect to Google OAuth
+		window.location.href = `http://localhost:3000/api/v1/auth/google/login?state=${state}`;
 	});
 });

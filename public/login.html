@@ -17,6 +17,27 @@
 				display: block;
 				margin-bottom: 0.5rem;
 			}
+			#googleLoginBtn {
+				display: inline-flex;
+				align-items: center;
+				background-color: white;
+				color: #444;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				padding: 0.5rem 1rem;
+				text-decoration: none;
+				font-weight: bold;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+				transition: background-color 0.3s;
+			}
+			#googleLoginBtn:hover {
+				background-color: #f7f7f7;
+			}
+			#googleLoginBtn img {
+				width: 20px;
+				height: 20px;
+				margin-right: 0.5rem;
+			}
 		</style>
 	</head>
 	<body>
@@ -31,6 +52,18 @@
 			/>
 			<button type="submit">Login</button>
 		</form>
+
+		<!-- Google Login Button -->
+		<a
+			href="http://localhost:3000/api/v1/auth/google/login"
+			id="googleLoginBtn"
+		>
+			<img
+				src="https://developers.google.com/identity/images/g-logo.png"
+				alt="Google logo"
+			/>
+			<span>Sign in with Google</span>
+		</a>
 
 		<script src="utils.js"></script>
 		<script src="login.js"></script>

@@ -48,12 +48,103 @@ const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 	});
 };
 
+/*
+	userInfo contains this:
+
+	{
+		"id": "103939861337453971160",
+		"email": "tommyv3606@gmail.com",
+		"verified_email": true,
+		"name": "Tommy Vercetti",
+		"given_name": "Tommy",
+		"family_name": "Vercetti",
+		"picture": "https://lh3.googleusercontent.com/a/ACg8ocKHxmHYXPg_Bf0dye0WTPodp8zrG12Je0CNPOe6JSctoMlR=s96-c"
+	}
+*/
+const googleLogin = async (
+	userInfo,
+	userModel,
+	tokenModel,
+	fastify,
+	request,
+	reply
+) => {
+	const {
+		id: googleId,
+		email,
+		verified_email,
+		name: username,
+		given_name,
+		family_name,
+		picture,
+	} = userInfo;
+	let user = await userModel.findByEmail(email, googleId);
+	if (!user) {
+		user = await userModel.createGoogleUser({ googleId, email, username });
+	}
+	// Extract the state parameter
+	const state = decodeURIComponent(request.query.state);
+
+	// Parse the state (you could validate it using some encryption method)
+	let parsedState;
+	try {
+		parsedState = JSON.parse(state);
+	} catch (err) {
+		throw new CustomError.BadRequestError("Invalid state parameter");
+	}
+
+	// Extract deviceId from the state
+	const deviceId = parsedState.deviceId;
+	const userPayload = createPayload(user);
+	const existingToken = await tokenModel.findByUserIdAndDeviceId(
+		user.id,
+		deviceId
+	);
+	if (existingToken) {
+		// Set old one to invalid
+		await tokenModel.invalidateRefreshToken(existingToken.refresh_token_id); // Note 2
+		// Generate a new one
+		const refreshTokenId = crypto.randomBytes(40).toString("hex");
+		const userAgent = request.headers["user-agent"];
+		const ip = request.ip; // ip address of the client who made the request
+		const userToken = {
+			refreshTokenId,
+			ip,
+			userAgent,
+			userId: user.id,
+			deviceId,
+		};
+		await tokenModel.createRefreshToken(userToken);
+		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId); // Note 3
+		return { user: userPayload };
+	}
+
+	/* 
+		👇 Control path: 
+			1. If refresh token doesn't exist 
+			2. exists but for a separate device different from the one the user is trying to log into now
+			3. 
+	*/
+	const refreshTokenId = crypto.randomBytes(40).toString("hex");
+	const userAgent = request.headers["user-agent"];
+	const ip = request.ip; // ip address of the client who made the request
+	const userToken = {
+		refreshTokenId,
+		ip,
+		userAgent,
+		userId: user.id,
+		deviceId,
+	};
+	await tokenModel.createRefreshToken(userToken);
+	attachCookiesToReply(fastify, reply, userPayload, refreshTokenId);
+
+	return { user: userPayload };
+};
+
 module.exports = (userModel, tokenModel, fastify) => ({
 	// Note 1
 	register: async (request, reply) => {
 		const user = await userModel.createUser(request.body);
-		// attachCookiesToReply(fastify, reply, user);
-		console.log(user);
 		reply.send({ user: { id: user.id, username: user.username } });
 	},
 
@@ -119,7 +210,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		await tokenModel.createRefreshToken(userToken);
 		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId);
 
-		reply.send({ user: { id: user.id, username: user.username } });
+		reply.send({ user: userPayload });
 	},
 
 	googleCallback: async function (request, reply) {
@@ -138,8 +229,16 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			}
 		);
 		const userInfo = await userResponse.json();
+		const userPayload = await googleLogin(
+			userInfo,
+			userModel,
+			tokenModel,
+			fastify,
+			request,
+			reply
+		);
 
-		reply.send({ message: "Logged in with Google", user: userInfo });
+		reply.send({ message: "Logged in with Google", userPayload });
 	},
 
 	logout: async (request, reply) => {

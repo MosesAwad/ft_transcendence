@@ -10,8 +10,9 @@ exports.up = function (knex) {
             .notNullable()
             .checkLength(">=", 3)
             .checkLength("<=", 50);
-        table.string("email").notNullable().unique();
-        table.string("password").notNullable().checkLength(">=", 6);
+        table.string("email").notNullable();
+        table.string("password").checkLength(">=", 6);
+        table.string("google_id").unique();
     });
 };
 
