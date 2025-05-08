@@ -63,6 +63,7 @@ const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
 */
 const googleLogin = async (
 	userInfo,
+	deviceId,
 	userModel,
 	tokenModel,
 	fastify,
@@ -82,19 +83,7 @@ const googleLogin = async (
 	if (!user) {
 		user = await userModel.createGoogleUser({ googleId, email, username });
 	}
-	// Extract the state parameter
-	const state = decodeURIComponent(request.query.state);
 
-	// Parse the state (you could validate it using some encryption method)
-	let parsedState;
-	try {
-		parsedState = JSON.parse(state);
-	} catch (err) {
-		throw new CustomError.BadRequestError("Invalid state parameter");
-	}
-
-	// Extract deviceId from the state
-	const deviceId = parsedState.deviceId;
 	const userPayload = createPayload(user);
 	const existingToken = await tokenModel.findByUserIdAndDeviceId(
 		user.id,
@@ -229,8 +218,10 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			}
 		);
 		const userInfo = await userResponse.json();
+		const deviceId = request.deviceId; // added to the request object via our checkStateFunction in oAuthPlugin configuration
 		const userPayload = await googleLogin(
 			userInfo,
+			deviceId,
 			userModel,
 			tokenModel,
 			fastify,

@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
 	if (!loginForm) return;
 	const googleBtn = document.getElementById("googleLoginBtn");
 
-
 	loginForm.addEventListener("submit", async (e) => {
 		e.preventDefault();
 		const email = document.getElementById("email").value;
@@ -32,17 +31,36 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	});
 
-	googleBtn.addEventListener("click", () => {
+	googleBtn.addEventListener("click", (e) => {
+		e.preventDefault(); // VERY IMPORTANT! Note 1
+
+		// Disable the button immediately to prevent double-clicks
+		googleBtn.disabled = true;
+
+		// Get or generate deviceId
 		let deviceId = localStorage.getItem("deviceId");
 		if (!deviceId) {
 			deviceId = generateDeviceId();
 			localStorage.setItem("deviceId", deviceId);
 		}
 
-		// Generate a state string containing the deviceId (for security, consider encoding it)
+		// Create proper JSON string and encode it
 		const state = encodeURIComponent(JSON.stringify({ deviceId }));
 
-		// Send the state parameter along with the redirect to Google OAuth
-		window.location.href = `http://localhost:3000/api/v1/auth/google/login?state=${state}`;
+		window.location.href = `${baseURL}/auth/google/login?state=${state}`;
 	});
 });
+
+/*
+	NOTES
+
+		Note 1
+
+		DO NOT FORGET, otherwise, two requests would be made:
+			1.	One from the actual HTML (since it was an <a href> tag) to "http://localhost:3000/api/v1/auth/google/login without 
+				the state query string, that's bad, we need deviceId to be sent!!
+			2.	Another one which is the redirect you set with this line window.location.href = `${baseURL}/auth/google/login?state=${state}`; 
+				and that is the only one we want.
+
+		Since we only want the second request, we use e.preventDefault().
+*/

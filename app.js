@@ -30,6 +30,7 @@ const {
 	handleSocketConnection,
 	onlineUsers,
 } = require("./sockets/connectionHandler");
+const { request } = require("http");
 
 const start = async () => {
 	try {
@@ -67,7 +68,7 @@ const start = async () => {
 
 		fastify.register(oauthPlugin, {
 			name: "googleOAuth2",
-			scope: ['profile', 'email'], // refers to Google's /auth/userinfo.email and /auth/userinfo.profile
+			scope: ["profile", "email"], // refers to Google's /auth/userinfo.email and /auth/userinfo.profile
 			credentials: {
 				client: {
 					id: process.env.GOOGLE_CLIENT_ID,
@@ -77,6 +78,28 @@ const start = async () => {
 			},
 			startRedirectPath: "/api/v1/auth/google/login", // register a fastify url to start the redirect flow to the service provider's OAuth2 login
 			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
+
+			generateStateFunction: function (req, callback) {
+				try {
+					const state = req.query.state;
+					callback(null, state); // gives it to google Oauth provider and makes it return it back for us
+				} catch (err) {
+					console.error("State error:", err);
+					callback(err);
+				}
+			},
+
+			checkStateFunction: (req, callback) => {
+				try {
+					const decoded = decodeURIComponent(req.query.state); // now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
+					const parsed = JSON.parse(decoded);
+					req.deviceId = parsed.deviceId;
+					callback(null, true);
+				} catch (err) {
+					console.error("Invalid state:", err);
+					callback(new Error("Invalid state parameter"), false);
+				}
+			},
 		});
 
 		fastify.register(require("./plugins/authentication"));
