@@ -44,8 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
 			localStorage.setItem("deviceId", deviceId);
 		}
 
-		// Create proper JSON string and encode it
-		const state = encodeURIComponent(JSON.stringify({ deviceId }));
+		// Create JSON and base64 encode it
+		const state = encodeURIComponent(btoa(JSON.stringify({ deviceId })));
 
 		window.location.href = `${baseURL}/auth/google/login?state=${state}`;
 	});

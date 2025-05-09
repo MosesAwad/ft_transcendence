@@ -76,29 +76,26 @@ const start = async () => {
 				},
 				auth: oauthPlugin.GOOGLE_CONFIGURATION,
 			},
-			startRedirectPath: "/api/v1/auth/google/login", // register a fastify url to start the redirect flow to the service provider's OAuth2 login
+			startRedirectPath: process.env.GOOGLE_REDIRECT_PATH, // register a fastify url to start the redirect flow to the service provider's OAuth2 login
 			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
+			redirectStateCookieName: "oauth2_state",
 
-			generateStateFunction: function (req, callback) {
-				try {
-					const state = req.query.state;
-					callback(null, state); // gives it to google Oauth provider and makes it return it back for us
-				} catch (err) {
-					console.error("State error:", err);
-					callback(err);
-				}
+			generateStateFunction: (request) => {
+				const state = request.query.state;
+				return state;
 			},
-
-			checkStateFunction: (req, callback) => {
-				try {
-					const decoded = decodeURIComponent(req.query.state); // now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
-					const parsed = JSON.parse(decoded);
-					req.deviceId = parsed.deviceId;
-					callback(null, true);
-				} catch (err) {
-					console.error("Invalid state:", err);
-					callback(new Error("Invalid state parameter"), false);
+			checkStateFunction: (request, callback) => {
+				if (request.query.state === request.cookies['oauth2_state']) {
+					const base64 = decodeURIComponent(request.query.state);	// now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
+					const json = Buffer.from(base64, "base64").toString(
+						"utf-8"
+					);
+					const parsed = JSON.parse(json);
+					request.deviceId = parsed.deviceId;
+					callback();
+					return;
 				}
+				callback(new Error("Invalid state"));
 			},
 		});
 
