@@ -78,7 +78,7 @@ const start = async () => {
 			},
 			startRedirectPath: process.env.GOOGLE_REDIRECT_PATH, // register a fastify url to start the redirect flow to the service provider's OAuth2 login
 			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
-			redirectStateCookieName: "oauth2_state",
+			redirectStateCookieName: "oauth2_state", // this cookie's path is equivalent to the GOOGLE_REDIRECT_PATH
 
 			generateStateFunction: (request) => {
 				const state = request.query.state;

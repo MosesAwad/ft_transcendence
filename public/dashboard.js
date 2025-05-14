@@ -328,7 +328,7 @@ logoutBtn.addEventListener("click", async () => {
 		body: JSON.stringify({ deviceId }),
 	});
 	if (res.ok) {
-		localStorage.removeItem("deviceId");
+		// localStorage.removeItem("deviceId");
 		window.location.href = "index.html";
 	} else {
 		alert("Logout failed ❌");

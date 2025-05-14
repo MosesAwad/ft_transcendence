@@ -89,31 +89,10 @@ const googleLogin = async (
 		user.id,
 		deviceId
 	);
-	if (existingToken) {
-		// Set old one to invalid
-		await tokenModel.invalidateRefreshToken(existingToken.refresh_token_id); // Note 2
-		// Generate a new one
-		const refreshTokenId = crypto.randomBytes(40).toString("hex");
-		const userAgent = request.headers["user-agent"];
-		const ip = request.ip; // ip address of the client who made the request
-		const userToken = {
-			refreshTokenId,
-			ip,
-			userAgent,
-			userId: user.id,
-			deviceId,
-		};
-		await tokenModel.createRefreshToken(userToken);
-		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId); // Note 3
-		return { user: userPayload };
-	}
 
-	/* 
-		👇 Control path: 
-			1. If refresh token doesn't exist 
-			2. exists but for a separate device different from the one the user is trying to log into now
-			3. 
-	*/
+	if (existingToken) {
+		await tokenModel.invalidateRefreshToken(existingToken.refresh_token_id);
+	}
 	const refreshTokenId = crypto.randomBytes(40).toString("hex");
 	const userAgent = request.headers["user-agent"];
 	const ip = request.ip; // ip address of the client who made the request
@@ -152,39 +131,23 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		}
 
 		const userPayload = createPayload(user);
-		console.log("(", user.id, ",", deviceId, ")");
 		const existingToken = await tokenModel.findByUserIdAndDeviceId(
 			user.id,
 			deviceId
-		);
+		); // This functions looks only for valid refresh tokens
 
-		// 👇 Control path: If refresh token exists and specifically for the device the user is trying to log into now
+		// 👇 Control path: If refresh token exists, is valid, and is specifically for the device the user is trying to log into now
 		if (existingToken) {
 			// Set old one to invalid
 			await tokenModel.invalidateRefreshToken(
 				existingToken.refresh_token_id
 			); // Note 2
-			// Generate a new one
-			const refreshTokenId = crypto.randomBytes(40).toString("hex");
-			const userAgent = request.headers["user-agent"];
-			const ip = request.ip; // ip address of the client who made the request
-			const userToken = {
-				refreshTokenId,
-				ip,
-				userAgent,
-				userId: user.id,
-				deviceId,
-			};
-			await tokenModel.createRefreshToken(userToken);
-			attachCookiesToReply(fastify, reply, userPayload, refreshTokenId); // Note 3
-			return reply.send({ user: userPayload });
 		}
-
 		/* 
-		👇 Control path: 
-			1. If refresh token doesn't exist 
-			2. exists but for a separate device different from the one the user is trying to log into now
-			3. 
+			👇 Control path: 
+				1. If refresh token doesn't exist 
+				2. Exists but for a separate device different from the one the user is trying to log into now
+				3. Exists but it is no longer valid (expired)
 		*/
 		const refreshTokenId = crypto.randomBytes(40).toString("hex");
 		const userAgent = request.headers["user-agent"];
@@ -196,7 +159,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			userId: user.id,
 			deviceId,
 		};
-		await tokenModel.createRefreshToken(userToken);
+		await tokenModel.createRefreshToken(userToken); // Note 3
 		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId);
 
 		reply.send({ user: userPayload });
@@ -236,17 +199,20 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		const { deviceId } = request.body;
 		const { id: userId } = request.user.user;
 
-		await tokenModel.deleteRefreshToken(userId, deviceId); // Note 4
+		const refreshToken = await tokenModel.findByUserIdAndDeviceId(userId, deviceId);
+		await tokenModel.invalidateRefreshToken(refreshToken.refresh_token_id); // Note 4
+
 		reply.setCookie("accessToken", "logout", {
 			path: "/",
 			httpOnly: true,
 			expires: new Date(Date.now()),
 		});
 		reply.setCookie("refreshToken", "logout", {
-			path: "api/v1/auth/refresh",
+			path: "/api/v1/auth/refresh",
 			httpOnly: true,
 			expires: new Date(Date.now()),
 		});
+
 		reply.send({
 			msg: `User ${request.user.user.username} has been logged out`,
 		});
