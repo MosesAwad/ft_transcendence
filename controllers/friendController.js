@@ -36,7 +36,7 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => {
 			);
 
 			if (status === "accepted") {
-				await friendNotificationService.notfiyFriendRequestAccepted(
+				await friendNotificationService.notifyFriendRequestAccepted(
 					senderUser,
 					receiverUser
 				);

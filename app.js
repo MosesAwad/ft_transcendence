@@ -30,7 +30,6 @@ const {
 	handleSocketConnection,
 	onlineUsers,
 } = require("./sockets/connectionHandler");
-const { request } = require("http");
 
 const start = async () => {
 	try {

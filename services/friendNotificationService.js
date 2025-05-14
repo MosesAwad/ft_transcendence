@@ -20,7 +20,7 @@ module.exports = (notificationModel, io, onlineUsers) => ({
 		);
 	},
 
-	notfiyFriendRequestAccepted: async (senderUser, receiverUser) => {
+	notifyFriendRequestAccepted: async (senderUser, receiverUser) => {
 		const { id: accepterId, username: accepterUsername } = receiverUser; // receiver of the friend request
 		const { id: requesterId, username: requesterUsername } = senderUser; // sender of the friend request
 
