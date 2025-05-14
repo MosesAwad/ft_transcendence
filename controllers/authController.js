@@ -199,8 +199,11 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		const { deviceId } = request.body;
 		const { id: userId } = request.user.user;
 
-		const refreshToken = await tokenModel.findByUserIdAndDeviceId(userId, deviceId);
-		await tokenModel.invalidateRefreshToken(refreshToken.refresh_token_id); // Note 4
+		const refreshToken = await tokenModel.findByUserIdAndDeviceId(
+			userId,
+			deviceId
+		); // Note 4
+		await tokenModel.invalidateRefreshToken(refreshToken.refresh_token_id);
 
 		reply.setCookie("accessToken", "logout", {
 			path: "/",

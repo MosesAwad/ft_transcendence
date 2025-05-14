@@ -50,13 +50,6 @@ class Token {
 			.update({ is_valid: 0 });
 	}
 
-	async deleteRefreshToken(userId, deviceId) {
-		const deletedCount = await this.db("tokens")
-			.where({ user_id: userId, device_id: deviceId })
-			.del();
-		return deletedCount;
-	}
-
 	// Note 1
 	async invalidateExpiredTokens(expiryThreshold) {
 		await this.db("tokens")
