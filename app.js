@@ -11,10 +11,13 @@ const authRoutes = require("./routes/authRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const userRoutes = require("./routes/userRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+
 const User = require("./models/User");
 const Token = require("./models/Token");
 const Friend = require("./models/Friend");
 const Notification = require("./models/Notification");
+const Chat = require("./models/Chat");
 
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
@@ -42,6 +45,7 @@ const start = async () => {
 		const friendModel = new Friend(db);
 		const tokenModel = new Token(db);
 		const notificationModel = new Notification(db);
+		const chatModel = new Chat(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt and oauthPlugin)
 		fastify.register(require("@fastify/cors"), {
@@ -49,7 +53,7 @@ const start = async () => {
 			method: ["GET", "POST", "HEAD"],
 			credentials: true,
 		});
-
+		
 		fastify.register(fastifyStatic, {
 			root: path.join(__dirname, "public"),
 			prefix: "/", // Note 1
@@ -84,8 +88,8 @@ const start = async () => {
 				return state;
 			},
 			checkStateFunction: (request, callback) => {
-				if (request.query.state === request.cookies['oauth2_state']) {
-					const base64 = decodeURIComponent(request.query.state);	// now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
+				if (request.query.state === request.cookies["oauth2_state"]) {
+					const base64 = decodeURIComponent(request.query.state); // now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
 					const json = Buffer.from(base64, "base64").toString(
 						"utf-8"
 					);
@@ -122,6 +126,7 @@ const start = async () => {
 			notificationModel,
 			prefix: "/api/v1/notifications",
 		});
+		fastify.register(chatRoutes, { chatModel, prefix: "/api/v1/chats" });
 
 		// 6. Start server with dual-stack support
 		const address = await fastify.listen({
