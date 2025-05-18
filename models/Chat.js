@@ -1,3 +1,4 @@
+const CustomError = require("../errors");
 class Chat {
 	constructor(db) {
 		this.db = db;
@@ -25,25 +26,83 @@ class Chat {
 			.where("cp1.user_id", user1Id)
 			.andWhere("cp2.user_id", user2Id)
 			.first();
-		const user2Found = await this.db("users")
-			.where({ id: user2Id })
-			.first();
+		const user2 = await this.db("users").where({ id: user2Id }).first();
 		const chatWithSelf = user1Id === user2Id;
+		// Control path where user is attempting to start a chat with themselves
+		if (chatWithSelf) {
+			throw new CustomError.BadRequestError(
+				"Unable to create chat: cannot initiatie chat with oneself!"
+			);
+		}
 		// Control path where the user has already has a chat with user2, must get the chat instead
+		if (chatWithUser2) {
+			throw new CustomError.BadRequestError(
+				`Unable to create chat: chat with user '${user2.username}' already exists!`
+			);
+		}
 		// Control path where user2 is not in the database
-		if (chatWithUser2 || !user2Found || chatWithSelf) {
-			return null;
+		if (!user2) {
+			throw new CustomError.BadRequestError(
+				`Unable to create chat: user with id ${user2Id} not found!`
+			);
 		}
 
-		// Inser a chat into the "chats" table, then fill the "chat_participants" table
+		// Insert a chat into the "chats" table, then fill the "chat_participants" table
 		const [chatId] = await this.db("chats").insert({}).returning("id");
-
+		// Insert the chat details into the "chat_participants" join table
 		await this.db("chat_participants").insert([
 			{ chat_id: chatId, user_id: user1Id },
 			{ chat_id: chatId, user_id: user2Id },
 		]);
 
 		return chatId;
+	}
+
+	async createMessage(senderId, chatId, content) {
+		const chatRows = await this.db("chat_participants").where({
+			chat_id: chatId,
+		});
+		const chatParticipantIds = chatRows.map((row) => row.user_id);
+		// Control path where the user tries to send a message in a chatroom he does not belong to
+		if (!chatParticipantIds.includes(senderId)) {
+			throw new CustomError.UnauthorizedError(
+				"Access Denied! Unable to send message"
+			);
+		}
+
+		// Add the message to the database
+		const { messageId } = await this.db("messages")
+			.insert({
+				chat_id: chatId,
+				sender_id: senderId,
+				content: content,
+			})
+			.returning("id");
+		// Update the updated_at timestamp of the chat in the "chats" table
+		await this.db("chats")
+			.where({ id: chatId })
+			.update({
+				updated_at: this.db.raw("CURRENT_TIMESTAMP"),
+			});
+
+		return messageId;
+	}
+
+	async getMessages(userId, chatId) {
+		const chatRows = await this.db("chat_participants").where({
+			chat_id: chatId,
+		});
+		const chatParticipantIds = chatRows.map((row) => row.user_id);
+		// Control path where the user tries to obtain the messages in a chatroom he does not belong to
+		if (!chatParticipantIds.includes(userId)) {
+			throw new CustomError.UnauthorizedError(
+				"Access denied! Unable to retrieve messages"
+			);
+		}
+		const messages = await this.db("messages")
+			.where({ chat_id: chatId })
+			.orderBy("created_at", "asc");
+		return messages;
 	}
 }
 

@@ -26,7 +26,40 @@ const createChatOpts = {
 	},
 };
 
+const createMessageOpts = {
+	schema: {
+		body: {
+			type: "object",
+			properties: {
+				chatId: {
+					type: "number",
+				},
+				content: {
+					type: "string",
+				},
+			},
+			required: ["chatId", "content"],
+		},
+	},
+};
+
+const getMessagesOpts = {
+	schema: {
+		params: {
+			type: "object",
+			properties: {
+				chatId: {
+					type: "number",
+				},
+			},
+			required: ["chatId"],
+		},
+	},
+};
+
 module.exports = {
 	getChatOpts,
 	createChatOpts,
+	createMessageOpts,
+	getMessagesOpts,
 };

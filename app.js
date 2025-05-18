@@ -126,7 +126,7 @@ const start = async () => {
 			notificationModel,
 			prefix: "/api/v1/notifications",
 		});
-		fastify.register(chatRoutes, { chatModel, prefix: "/api/v1/chats" });
+		fastify.register(chatRoutes, { chatModel, prefix: "/api/v1" });
 
 		// 6. Start server with dual-stack support
 		const address = await fastify.listen({
