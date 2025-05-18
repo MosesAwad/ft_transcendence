@@ -1,4 +1,4 @@
-const listUserOpts = {
+const listAllUsersOpts = {
 	schema: {
 		query: {
 			type: "object",
@@ -27,7 +27,21 @@ const listUserOpts = {
 	},
 };
 
-module.exports = { listUserOpts };
+const listSingleUserOpts = {
+	schema: {
+		params: {
+			type: "object",
+			properties: {
+				userId: {
+					type: "number",
+				},
+			},
+			required: ["userId"],
+		},
+	},
+};
+
+module.exports = { listSingleUserOpts, listAllUsersOpts };
 
 /*
 	You can add more later, besides search, perhaps like (tournament instead of search query to list all players participating). I left 

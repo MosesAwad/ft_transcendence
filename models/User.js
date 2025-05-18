@@ -27,12 +27,11 @@ class User {
 	}
 
 	async createGoogleUser({ googleId, email, username }) {
-
 		const [{ id }] = await this.db("users")
 			.insert({
 				username,
 				email,
-				google_id: googleId
+				google_id: googleId,
 			})
 			.returning("id"); // SQLite returns id automatically
 		return { id, username, email };
@@ -63,6 +62,20 @@ class User {
 		}
 
 		return users;
+	}
+
+	async listSingleUser(userId) {
+		const user = await this.db("users")
+			.select("id", "username", "email")
+			.where({ id: userId })
+			.first();
+		if (!user) {
+			throw new CustomError.NotFoundError(
+				`User with id of ${userId} not found!`
+			);
+		}
+
+		return user;
 	}
 }
 

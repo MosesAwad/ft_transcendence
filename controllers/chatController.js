@@ -5,11 +5,19 @@ module.exports = (chatModel, io) => ({
 		const {
 			user: { id: user1Id },
 		} = request.user;
-		const { chatId } = request.params;
+		const { otherUserId: user2Id } = request.params;
 
-		const chat = await validateChatIdAndUserParticipation(user1Id, chatId);
-		// if (!chat)
-		reply.send({ msg: "Chat fetch approved", chat_id: chatId });
+		const chatId = await chatModel.getChatBetweenUsers(user1Id, user2Id);
+		reply.send({ msg: "Chat found", chat_id: chatId });
+	},
+
+	getAllChats: async (request, reply) => {
+		const {
+			user: { id: user1Id },
+		} = request.user;
+
+		const chatsData = await chatModel.getAllUserChats(user1Id);
+		reply.send(chatsData);
 	},
 
 	createChat: async (request, reply) => {
@@ -39,7 +47,6 @@ module.exports = (chatModel, io) => ({
 		reply.send({
 			msg: `Message with id ${message.id} was successfuly sent`,
 		});
-
 		io.to(chatId.toString()).emit("newMessage", message);
 	},
 

@@ -1,30 +1,43 @@
 const {
-	getChatOpts,
+	getSingleChatOpts,
 	createChatOpts,
 	createMessageOpts,
 	getMessagesOpts,
 } = require("../schemas/chatSchemas");
 
-const authRoutes = function (fastify, options) {
+const chatRoutes = function (fastify, options) {
 	const { chatModel } = options;
 	const io = fastify.io;
 
-	const { getSingleChat, createChat, createMessage, getMessages } =
-		require("../controllers/chatController")(chatModel, io);
+	const {
+		getSingleChat,
+		getAllChats,
+		createChat,
+		createMessage,
+		getMessages,
+	} = require("../controllers/chatController")(chatModel, io);
 
 	fastify.get(
 		"/chats/:chatId/messages",
 		{ preHandler: fastify.authenticate, schema: getMessagesOpts.schema },
 		getMessages
 	);
-	fastify.get("/chats/:chatId", { preHandler: fastify.authenticate, /* schema: getMessagesOpts.schema */},
+	// This route just serves as a checker for the front-end to test whether a chat has to be created or not
+	fastify.get(
+		"/chats/between/:otherUserId",
+		{
+			preHandler:
+				fastify.authenticate , schema: getSingleChatOpts.schema,
+		},
 		getSingleChat
 	);
+	// This route gets all chats belonging to a single user ordered by the updated_at field in the "chats" table
 	fastify.get(
 		"/chats",
-		{ preHandler: fastify.authenticate, schema: getChatOpts.schema },
+		{ preHandler: fastify.authenticate},
 		getAllChats
 	);
+
 	fastify.post(
 		"/chats",
 		{ preHandler: fastify.authenticate, schema: createChatOpts.schema },
@@ -35,7 +48,6 @@ const authRoutes = function (fastify, options) {
 		{ preHandler: fastify.authenticate, schema: createMessageOpts.schema },
 		createMessage
 	);
-	// Get All Chats belonging to a single user ordered by the updated_at field in the "chats" table
 };
 
-module.exports = authRoutes;
+module.exports = chatRoutes;

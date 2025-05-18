@@ -27,24 +27,24 @@ const createJWT = (fastify, payload, expiresIn) => {
 	1d | new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
 */
 const attachCookiesToReply = (fastify, reply, user, refreshTokenId) => {
-	const accessToken = createJWT(fastify, { user }, "1m"); // must match cookie expiration below
+	const accessToken = createJWT(fastify, { user }, "5m"); // must match cookie expiration below
 	reply.setCookie("accessToken", accessToken, {
 		path: "/", // Makes cookie available to ALL routes [see Note 0]
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
 		signed: true, // Must match plugin config
-		expires: new Date(Date.now() + 1 * 60 * 1000), // When the browser deletes the cookie, set it up to match JWT expiration above
+		expires: new Date(Date.now() + 5 * 60 * 1000), // When the browser deletes the cookie, set it up to match JWT expiration above
 	});
 
-	const refreshToken = createJWT(fastify, { user, refreshTokenId }, "5m"); // must match cookie expriation below
+	const refreshToken = createJWT(fastify, { user, refreshTokenId }, "15m"); // must match cookie expriation below
 	reply.setCookie("refreshToken", refreshToken, {
 		path: "/api/v1/auth/refresh", // Makes cookie available to ALL routes
 		secure: process.env.NODE_ENV === "production", // Must match plugin config
 		sameSite: "lax", // Basic CSRF protection
 		httpOnly: true, // Must match plugin config
 		signed: true, // Must match plugin config
-		expires: new Date(Date.now() + 5 * 60 * 1000), // When the browser deletes the cookie, set it up to match JWT expiration above
+		expires: new Date(Date.now() + 15 * 60 * 1000), // When the browser deletes the cookie, set it up to match JWT expiration above
 	});
 };
 

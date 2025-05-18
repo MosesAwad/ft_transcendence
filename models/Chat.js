@@ -4,12 +4,33 @@ class Chat {
 		this.db = db;
 	}
 
-	async validateChatIdAndUserParticipation(user1Id, chatId) {
-		const chat = await this.db("chat_participants")
-			.where({ user_id: user1Id, chat_id: chatId })
+	async getChatBetweenUsers(user1Id, user2Id) {
+		// Control path where the user tries to fetch a chat with themselves (not allowed since we do not support self-chat)
+		if (user1Id.toString() === user2Id) {
+			throw new CustomError.NotFoundError(`No such chat was found`);
+		}
+		// This technique is called a self-join (see Note 1)
+		const chatWithUser2 = await this.db("chat_participants as cp1")
+			.join("chat_participants as cp2", "cp1.chat_id", "cp2.chat_id")
+			.where("cp1.user_id", user1Id)
+			.andWhere("cp2.user_id", user2Id)
 			.first();
+		// Control path where the user has never chatted with user2 before, must create a chat instead
+		if (!chatWithUser2) {
+			throw new CustomError.NotFoundError(`No such chat was found`);
+		}
 
-		return chat;
+		return chatWithUser2.chat_id;
+	}
+
+	async getAllUserChats(user1Id) {
+		const chatsData = await this.db("chat_participants as cp1")
+			.join("chat_participants as cp2", "cp1.chat_id", "cp2.chat_id")
+			.select("cp1.chat_id", "cp2.user_id as participantId")
+			.where("cp1.user_id", user1Id)
+			.andWhereNot("cp2.user_id", user1Id);
+
+		return chatsData;
 	}
 
 	async createChatBetweenUsers(user1Id, user2Id) {

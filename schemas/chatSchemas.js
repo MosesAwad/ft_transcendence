@@ -1,13 +1,13 @@
-const getChatOpts = {
+const getSingleChatOpts = {
 	schema: {
-		query: {
+		params: {
 			type: "object",
 			properties: {
-				user2Id: {
+				otherUserId: {
 					type: "number",
 				},
 			},
-			required: ["user2Id"],
+			required: ["otherUserId"],
 		},
 	},
 };
@@ -58,7 +58,7 @@ const getMessagesOpts = {
 };
 
 module.exports = {
-	getChatOpts,
+	getSingleChatOpts,
 	createChatOpts,
 	createMessageOpts,
 	getMessagesOpts,

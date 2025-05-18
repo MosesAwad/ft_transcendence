@@ -2,33 +2,39 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Chat Test</title>
+		<title>Chat Dashboard</title>
 		<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-		<style>
-			body {
-				font-family: sans-serif;
-				margin: 20px;
-			}
-			#messages {
-				border: 1px solid #ccc;
-				padding: 10px;
-				height: 300px;
-				overflow-y: scroll;
-				margin-bottom: 10px;
-			}
-		</style>
+		<link rel="stylesheet" href="chatStyles.css" />
 	</head>
 	<body>
-		<h2>Chat Room</h2>
-		<div>
-			<label>Chat ID: <input type="text" id="chatIdInput" /></label>
-			<button onclick="joinRoom()">Join Room</button>
+		<div id="dashboard">
+			<div id="startChatArea">
+				<input
+					type="text"
+					id="userSearchInput"
+					placeholder="Start chat with..."
+				/>
+				<div id="userSearchResults"></div>
+			</div>
+			<div id="chatList" class="sidebar">
+				<h3>Your Chats</h3>
+				<div id="chatRows"></div>
+			</div>
+			<div class="chatPanel">
+				<div id="chatHeader"></div>
+				<div id="messages"></div>
+				<div class="messageInputArea">
+					<input
+						type="text"
+						id="messageInput"
+						placeholder="Type a message..."
+					/>
+					<button id="sendBtn">Send</button>
+				</div>
+			</div>
 		</div>
-		<div id="messages"></div>
-		<input type="text" id="messageInput" placeholder="Type a message..." />
-		<button onclick="sendMessage()">Send</button>
+
+		<script src="utils.js"></script>
+		<script src="chat.js"></script>
 	</body>
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
-    <script src="utils.js"></script>
-    <script src="chat.js"></script>
 </html>

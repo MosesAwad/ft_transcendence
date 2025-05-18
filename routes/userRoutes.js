@@ -1,8 +1,9 @@
-const { listUserOpts } = require("../schemas/userSchemas");
+const { listSingleUserOpts, listAllUsersOpts } = require("../schemas/userSchemas");
 
 async function userRoutes(fastify, options) {
 	const { userModel } = options;
-	const { listUsers } = require("../controllers/userController")(userModel);
+	const { listAllUsers, listSingleUser } =
+		require("../controllers/userController")(userModel);
 	fastify.get(
 		"/showUser",
 		{ preHandler: fastify.authenticate },
@@ -11,9 +12,14 @@ async function userRoutes(fastify, options) {
 		}
 	);
 	fastify.get(
+		"/:userId",
+		{ preHandler: fastify.authenticate, schema: listSingleUserOpts.schema },
+		listSingleUser
+	);
+	fastify.get(
 		"/",
-		{ preHandler: fastify.authenticate, schema: listUserOpts.schema },
-		listUsers
+		{ preHandler: fastify.authenticate, schema: listAllUsersOpts.schema },
+		listAllUsers
 	);
 }
 
