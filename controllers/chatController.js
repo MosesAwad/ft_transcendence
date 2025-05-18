@@ -1,19 +1,15 @@
 const CustomError = require("../errors");
 
-module.exports = (chatModel) => ({
-	getChat: async (request, reply) => {
+module.exports = (chatModel, io) => ({
+	getSingleChat: async (request, reply) => {
 		const {
 			user: { id: user1Id },
 		} = request.user;
-		const { user2Id } = request.query;
+		const { chatId } = request.params;
 
-		const chatId = await chatModel.getChatBetweenUsers(user1Id, user2Id);
-		if (!chatId) {
-			throw new CustomError.NotFoundError(
-				`No such chat was found`
-			);
-		}
-		reply.send({ msg: "Chat found", chat_id: chatId });
+		const chat = await validateChatIdAndUserParticipation(user1Id, chatId);
+		// if (!chat)
+		reply.send({ msg: "Chat fetch approved", chat_id: chatId });
 	},
 
 	createChat: async (request, reply) => {
@@ -34,14 +30,17 @@ module.exports = (chatModel) => ({
 		} = request.user;
 		const { chatId, content } = request.body;
 
-		const messageId = await chatModel.createMessage(
+		const message = await chatModel.createMessage(
 			senderId,
 			chatId,
 			content
 		);
+
 		reply.send({
-			msg: `Message with id ${messageId} was successfuly sent`,
+			msg: `Message with id ${message.id} was successfuly sent`,
 		});
+
+		io.to(chatId.toString()).emit("newMessage", message);
 	},
 
 	getMessages: async (request, reply) => {

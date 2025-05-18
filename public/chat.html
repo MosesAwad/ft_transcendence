@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Chat Test</title>
+		<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+		<style>
+			body {
+				font-family: sans-serif;
+				margin: 20px;
+			}
+			#messages {
+				border: 1px solid #ccc;
+				padding: 10px;
+				height: 300px;
+				overflow-y: scroll;
+				margin-bottom: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Chat Room</h2>
+		<div>
+			<label>Chat ID: <input type="text" id="chatIdInput" /></label>
+			<button onclick="joinRoom()">Join Room</button>
+		</div>
+		<div id="messages"></div>
+		<input type="text" id="messageInput" placeholder="Type a message..." />
+		<button onclick="sendMessage()">Send</button>
+	</body>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="utils.js"></script>
+    <script src="chat.js"></script>
+</html>

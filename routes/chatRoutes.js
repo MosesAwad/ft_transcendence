@@ -7,23 +7,28 @@ const {
 
 const authRoutes = function (fastify, options) {
 	const { chatModel } = options;
-	const { getChat, createChat, createMessage, getMessages } =
-		require("../controllers/chatController")(chatModel);
+	const io = fastify.io;
+
+	const { getSingleChat, createChat, createMessage, getMessages } =
+		require("../controllers/chatController")(chatModel, io);
 
 	fastify.get(
 		"/chats/:chatId/messages",
 		{ preHandler: fastify.authenticate, schema: getMessagesOpts.schema },
 		getMessages
 	);
-	fastify.post(
-		"/chats",
-		{ preHandler: fastify.authenticate, schema: createChatOpts.schema },
-		createChat
+	fastify.get("/chats/:chatId", { preHandler: fastify.authenticate, /* schema: getMessagesOpts.schema */},
+		getSingleChat
 	);
 	fastify.get(
 		"/chats",
 		{ preHandler: fastify.authenticate, schema: getChatOpts.schema },
-		getChat
+		getAllChats
+	);
+	fastify.post(
+		"/chats",
+		{ preHandler: fastify.authenticate, schema: createChatOpts.schema },
+		createChat
 	);
 	fastify.post(
 		"/messages",

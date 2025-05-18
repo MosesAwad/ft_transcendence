@@ -1,5 +1,6 @@
 const { verifySignedCookie } = require("../utils/cookies");
 const jwt = require("jsonwebtoken");
+const { setupChatSocket } = require("./chatHandler");
 
 const onlineUsers = new Map();
 
@@ -38,11 +39,14 @@ function handleSocketConnection(fastify) {
 			onlineUsers.get(userId).add(socket.id);
 			console.log(`User ${userId} connected with socket ${socket.id}`);
 
-			// Handle disconnection (This code block is placed here because we only want register this event on the client's socket only if they logged in successfuly )
+			// Set up the "joinRoom" event socket handler
+			setupChatSocket(userId, socket);
+
+			// Handle disconnection (This code block is placed here because we only want register this event on the client's socket once they have logged in successfuly )
 			socket.on("disconnect", () => {
 				const userSockets = onlineUsers.get(userId);
 				if (userSockets) {
-					userSockets.delete(socket.id); // delete the socket's id from the Map when a socket disconnects to clean up memory.
+					userSockets.delete(socket.id); // delete the socket's id from the set when a socket disconnects to clean up memory.
 					if (userSockets.size === 0) {
 						// If userSockets is now empty as a result of the delete, clean up the empty set from the onlineUsers map
 						onlineUsers.delete(userId);

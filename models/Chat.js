@@ -4,23 +4,16 @@ class Chat {
 		this.db = db;
 	}
 
-	async getChatBetweenUsers(user1Id, user2Id) {
-		// This technique is called a self-join (see Note 1)
-		const chatWithUser2 = await this.db("chat_participants as cp1")
-			.join("chat_participants as cp2", "cp1.chat_id", "cp2.chat_id")
-			.where({ "cp1.user_id": user1Id })
-			.andWhere("cp2.user_id", user2Id)
+	async validateChatIdAndUserParticipation(user1Id, chatId) {
+		const chat = await this.db("chat_participants")
+			.where({ user_id: user1Id, chat_id: chatId })
 			.first();
-		// Control path where the user has never chatted with user2 before, must create a chat instead
-		if (!chatWithUser2) {
-			return null;
-		}
 
-		return chatWithUser2.chat_id;
+		return chat;
 	}
 
 	async createChatBetweenUsers(user1Id, user2Id) {
-		// Self-join technique to check if chat already exists (also see Note 1)
+		// Self-join technique to check if chat already exists (see Note 1)
 		const chatWithUser2 = await this.db("chat_participants as cp1")
 			.join("chat_participants as cp2", "cp1.chat_id", "cp2.chat_id")
 			.where("cp1.user_id", user1Id)
@@ -71,13 +64,14 @@ class Chat {
 		}
 
 		// Add the message to the database
-		const { messageId } = await this.db("messages")
+		const [message] = await this.db("messages")
 			.insert({
 				chat_id: chatId,
 				sender_id: senderId,
 				content: content,
 			})
-			.returning("id");
+			.returning("*");
+
 		// Update the updated_at timestamp of the chat in the "chats" table
 		await this.db("chats")
 			.where({ id: chatId })
@@ -85,7 +79,7 @@ class Chat {
 				updated_at: this.db.raw("CURRENT_TIMESTAMP"),
 			});
 
-		return messageId;
+		return message;
 	}
 
 	async getMessages(userId, chatId) {
