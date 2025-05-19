@@ -30,9 +30,9 @@ const cleanUpTokensJob = require("./jobs/cleanUpTokensJob");
 // socket dependencies
 const socketIo = require("socket.io");
 const {
-	handleSocketConnection,
+	handleSocketSetup,
 	onlineUsers,
-} = require("./sockets/connectionHandler");
+} = require("./sockets/mainSocketSetupHandler");
 
 const start = async () => {
 	try {
@@ -53,7 +53,7 @@ const start = async () => {
 			method: ["GET", "POST", "HEAD"],
 			credentials: true,
 		});
-		
+
 		fastify.register(fastifyStatic, {
 			root: path.join(__dirname, "public"),
 			prefix: "/", // Note 1
@@ -107,7 +107,7 @@ const start = async () => {
 		// 4. Set up Socket.io
 		const io = socketIo(fastify.server); // Attach Socket.io to Fastify's server instance
 		fastify.decorate("io", io);
-		handleSocketConnection(fastify);
+		handleSocketSetup(fastify);
 
 		// 5. Register routes
 		fastify.register(authRoutes, {

@@ -236,3 +236,12 @@ sendBtn.addEventListener("click", async () => {
 
 	if (res.ok) input.value = "";
 });
+
+// =============================
+// 🚪 LEAVE ROOM ON PAGE EXIT
+// =============================
+window.addEventListener("beforeunload", () => {
+	if (currentChatId !== null) {
+		socket.emit("leaveRoom", currentChatId);
+	}
+});

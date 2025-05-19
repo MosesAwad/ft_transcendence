@@ -1,0 +1,31 @@
+Event names:
+* joinRoom
+* leaveRoom
+* newMessage
+
+Notes:
+
+    Event Name:
+        leaveRoom
+
+    Description:
+        Front-end must emit it when:
+            * User switches to another chat
+            * User closes/refreshes/switches the page
+            * User logs out
+    
+    ==========================================================================================
+
+    Event Name:
+        newMessage
+    
+    Description:
+        Front-end must create a listener for it, here is a sample:
+        
+            socket.on("newMessage", (message) => {
+                if (message.chat_id === currentChatId) {
+                    appendMessage(message);
+                }
+            });
+
+        because the back-end emits this event when a new message is sent in a chat.

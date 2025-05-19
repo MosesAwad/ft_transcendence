@@ -1,10 +1,10 @@
 const { verifySignedCookie } = require("../utils/cookies");
 const jwt = require("jsonwebtoken");
-const { setupChatSocket } = require("./chatHandler");
+const { setupChatSocket } = require("./chatSocketSetupHandler");
 
 const onlineUsers = new Map();
 
-function handleSocketConnection(fastify) {
+function handleSocketSetup(fastify) {
 	fastify.io.on("connection", (socket) => {
 
 		console.log('Client connected from', socket.handshake.address);
@@ -65,7 +65,7 @@ function handleSocketConnection(fastify) {
 
 module.exports = {
 	onlineUsers,
-	handleSocketConnection,
+	handleSocketSetup,
 };
 
 /*
