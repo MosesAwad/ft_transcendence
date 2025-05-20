@@ -26,20 +26,6 @@ let currentUserId = null;
 // 💬 MESSAGE HANDLING
 // =============================
 async function appendMessage(msg) {
-	if (currentUserId === null) {
-		try {
-			const res = await fetchWithAutoRefresh(
-				"http://localhost:3000/api/v1/users/showUser"
-			);
-			if (!res.ok) throw new Error("Failed to fetch user");
-			const userData = await res.json();
-			currentUserId = userData.user.user.id;
-		} catch (err) {
-			console.error("Error fetching current user:", err);
-			return;
-		}
-	}
-
 	const div = document.createElement("div");
 	div.classList.add("message");
 	div.classList.add(msg.sender_id === currentUserId ? "user" : "other");
@@ -96,6 +82,19 @@ function getChatUsernameById(chatId) {
 }
 
 async function joinRoom(chatId) {
+	if (currentUserId === null) {
+		try {
+			const res = await fetchWithAutoRefresh(
+				"http://localhost:3000/api/v1/users/showUser"
+			);
+			if (!res.ok) throw new Error("Failed to fetch user");
+			const userData = await res.json();
+			currentUserId = userData.user.user.id;
+		} catch (err) {
+			console.error("Error fetching current user:", err);
+			return;
+		}
+	}
 	if (currentChatId !== null) {
 		socket.emit("leaveRoom", currentChatId);
 	}
@@ -122,7 +121,9 @@ async function joinRoom(chatId) {
 		`http://localhost:3000/api/v1/chats/${chatId}/messages`
 	);
 	const messages = await res.json();
-	messages.forEach(appendMessage);
+	for (const msg of messages) {
+		await appendMessage(msg);
+	}
 }
 
 // =============================
