@@ -6,7 +6,7 @@ const {
 } = require("../schemas/chatSchemas");
 
 const chatRoutes = function (fastify, options) {
-	const { chatModel } = options;
+	const { chatModel, notificationModel, onlineUsers } = options;
 	const io = fastify.io;
 
 	const {
@@ -15,7 +15,7 @@ const chatRoutes = function (fastify, options) {
 		createChat,
 		createMessage,
 		getMessages,
-	} = require("../controllers/chatController")(chatModel, io);
+	} = require("../controllers/chatController")(chatModel, notificationModel, io, onlineUsers);
 
 	fastify.get(
 		"/chats/:chatId/messages",

@@ -38,6 +38,11 @@ function addNotification(message) {
 	bellBtn.setAttribute("data-count", notificationCount);
 }
 
+socket.on("messageReceivedInform", (data) => {
+	addNotification(data.message);
+	loadFriendData();
+});
+
 socket.on("friendRequestInform", (data) => {
 	addNotification(data.message);
 	loadFriendData();
@@ -272,7 +277,11 @@ bellBtn.addEventListener("click", async () => {
 					credentials: "include",
 				}
 			);
-		
+
+			if (item.message.includes("sent you a message!")) {
+				window.location.href = "http://localhost:3000/chat.html";
+			}
+
 			// Update UI to fix it live without the user having to close the notification box and re-open
 			li.style.backgroundColor = "white";
 			item.is_read = 1;

@@ -106,7 +106,10 @@ class Chat {
 				updated_at: this.db.raw("CURRENT_TIMESTAMP"),
 			});
 
-		return message;
+		// Obtain the receiver's id for the chat notification service to use
+		const receiverUserId = chatParticipantIds.find((id) => id !== senderId);
+
+		return { message, receiverUserId };
 	}
 
 	async getMessages(userId, chatId) {

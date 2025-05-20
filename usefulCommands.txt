@@ -11,3 +11,10 @@ Problem:
 
   Command 2:
     kill -9 12345
+
+=====================================================================
+Problem:
+  You enter "overwrite" mode in VSCode
+
+  Fix:
+    Just hit the 'Insert' button on your keyboard (the '0' button on the numpad)

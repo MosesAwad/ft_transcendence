@@ -7,12 +7,41 @@ class Notification {
 
 	async createNotification(senderId, receiverId, type, message, systemWide) {
 		if (!systemWide && !senderId) {
-			throw new Error("Missing required notification data, unable to create notification")
+			throw new Error(
+				"Missing required notification data, unable to create notification"
+			);
 		}
 		if (!receiverId || !type || !message) {
 			throw new Error(
 				"Missing required notification data, unable to create notification"
 			); // Note 1
+		}
+
+		if (type === "message") {
+			const existingMessage = await this.db("notifications")
+			.where({
+				sender_id: senderId,
+				receiver_id: receiverId,
+				type,
+				is_read: false,
+			})
+			.first();
+			
+			console.log(existingMessage);
+			// Avoid cluttering receiver UI with "user X has sent you a message"
+			if (existingMessage) {
+				const newCount = existingMessage.message_count + 1;
+				const senderUsername = existingMessage.message.split(' ')[0];
+				await this.db("notifications")
+					.where({ id: existingMessage.id })
+					.update({
+						message: `${senderUsername} has sent you ${newCount} messages!`,
+						message_count: newCount,
+						updated_at: this.db.raw("CURRENT_TIMESTAMP"),
+					});
+
+				return;
+			}
 		}
 
 		await this.db("notifications").insert({
@@ -49,10 +78,11 @@ class Notification {
 				sender_id: friend1Id,
 				receiver_id: friend2Id,
 				type,
-			}).orWhere({
+			})
+			.orWhere({
 				sender_id: friend2Id,
 				receiver_id: friend1Id,
-				type
+				type,
 			})
 			.del();
 	}
@@ -60,7 +90,7 @@ class Notification {
 	async listNotifications(page, limit, receiverId) {
 		const notifications = await this.db("notifications")
 			.where("receiver_id", receiverId)
-			.orderBy('updated_at', 'desc')	// descending meaning newest ("largest") date first
+			.orderBy("updated_at", "desc") // descending meaning newest ("largest") date first
 			.limit(limit)
 			.offset((page - 1) * limit);
 
