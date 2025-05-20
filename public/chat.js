@@ -16,11 +16,37 @@ const sendBtn = document.getElementById("sendBtn");
 const userSearchInput = document.getElementById("userSearchInput");
 const userSearchResults = document.getElementById("userSearchResults");
 
+// Added notification elements
+const bellBtn = document.getElementById("bellBtn");
+const notificationBox = document.getElementById("notifications");
+const logoutBtn = document.getElementById("logoutBtn");
+
 // =============================
 // 🔄 STATE VARIABLES
 // =============================
 let currentChatId = null;
 let currentUserId = null;
+let notificationCount = 0;
+
+// =============================
+// 📢 NOTIFICATION HANDLING
+// =============================
+function addNotification(message) {
+	const placeholder = notificationBox.querySelector("em");
+	if (placeholder) placeholder.remove();
+
+	const div = document.createElement("div");
+	div.classList.add("notification");
+	div.textContent = message;
+	if (notificationBox.firstChild) {
+		notificationBox.insertBefore(div, notificationBox.firstChild);
+	} else {
+		notificationBox.appendChild(div);
+	}
+
+	notificationCount++;
+	bellBtn.setAttribute("data-count", notificationCount);
+}
 
 // =============================
 // 💬 MESSAGE HANDLING
@@ -41,33 +67,73 @@ function clearMessages() {
 // =============================
 // 🧭 CHAT NAVIGATION
 // =============================
-async function loadChats() {
-	chatListDiv.innerHTML = "";
-	const res = await fetchWithAutoRefresh(
-		"http://localhost:3000/api/v1/chats"
-	);
-	const chats = await res.json();
-
-	if (chats.length === 0) {
-		chatListDiv.textContent = "No chats yet.";
-		return;
+// Debounced function to avoid multiple rapid calls
+let chatReloadTimeout = null;
+function debouncedReloadChats() {
+	// Clear any pending reload
+	if (chatReloadTimeout) {
+		clearTimeout(chatReloadTimeout);
 	}
 
-	for (const { chat_id, participantId } of chats) {
-		const userRes = await fetchWithAutoRefresh(
-			`http://localhost:3000/api/v1/users/${participantId}`
+	// Set new timeout
+	chatReloadTimeout = setTimeout(() => {
+		loadChats();
+		chatReloadTimeout = null;
+	}, 300); // Wait 300ms before reloading
+}
+
+async function loadChats() {
+	// Clear existing chat list completely
+	while (chatListDiv.firstChild) {
+		chatListDiv.removeChild(chatListDiv.firstChild);
+	}
+
+	try {
+		const res = await fetchWithAutoRefresh(
+			"http://localhost:3000/api/v1/chats"
 		);
-		const user = await userRes.json();
+		const chats = await res.json();
 
-		const row = document.createElement("div");
-		row.className = "chatRow";
-		row.textContent = user.username;
+		if (chats.length === 0) {
+			const noChatsMsg = document.createElement("div");
+			noChatsMsg.textContent = "No chats yet.";
+			chatListDiv.appendChild(noChatsMsg);
+			return;
+		}
 
-		// Add this data attribute to identify the chat row
-		row.dataset.chatId = chat_id;
+		// Create a document fragment to batch DOM updates
+		const fragment = document.createDocumentFragment();
 
-		row.addEventListener("click", () => joinRoom(chat_id));
-		chatListDiv.appendChild(row);
+		for (const { chat_id, participantId } of chats) {
+			const userRes = await fetchWithAutoRefresh(
+				`http://localhost:3000/api/v1/users/${participantId}`
+			);
+			const user = await userRes.json();
+
+			const row = document.createElement("div");
+			row.className = "chatRow";
+			row.textContent = user.username;
+
+			// Add this data attribute to identify the chat row
+			row.dataset.chatId = chat_id;
+
+			// Check if this is the current active chat
+			if (currentChatId === chat_id) {
+				row.classList.add("active");
+			}
+
+			row.addEventListener("click", () => joinRoom(chat_id));
+			fragment.appendChild(row);
+		}
+
+		// Append all rows at once
+		chatListDiv.appendChild(fragment);
+
+		return chats; // Return the chats data in case it's needed
+	} catch (error) {
+		console.error("Error loading chats:", error);
+		chatListDiv.textContent = "Error loading chats.";
+		return []; // Return empty array in case of error
 	}
 }
 
@@ -211,13 +277,50 @@ async function handleUserClick(userId) {
 // =============================
 socket.on("connect", () => {
 	console.log("Connected to socket");
-	loadChats();
+	loadChats(); // This will clear existing chat rows before adding new ones
+
+	// Check for chatId parameter after socket connection is established
+	const params = new URLSearchParams(window.location.search);
+	const chatIdString = params.get("chatId");
+	if (chatIdString) {
+		console.log("Found chatId in URL, joining room:", chatIdString);
+		const chatId = parseInt(chatIdString); // convert it to integer because it comes as a string in the params 
+		// We need to wait a bit to make sure the chats have been loaded
+		setTimeout(() => {
+			joinRoom(chatId);
+		}, 500); // Wait half a second for the chats to load
+	}
 });
 
 socket.on("newMessage", (message) => {
+	// console.log("New message received:", message);
+	// console.log("Current chat ID:", currentChatId);
+	// console.log("Message chat ID:", message.chat_id);
+	// console.log("Are they equal?", message.chat_id === currentChatId);
+
 	if (message.chat_id === currentChatId) {
+		console.log("Appending message to chat");
 		appendMessage(message);
+	} else {
+		console.log("Not appending message - chat IDs don't match");
 	}
+	// Reload chats to update the order (most recent at top)
+	debouncedReloadChats();
+});
+
+// Added socket event listeners for notifications
+socket.on("messageReceivedInform", (data) => {
+	addNotification(data.message);
+	// Reload chats to update the order
+	debouncedReloadChats();
+});
+
+socket.on("friendRequestInform", (data) => {
+	addNotification(data.message);
+});
+
+socket.on("friendRequestAccept", (data) => {
+	addNotification(data.message);
 });
 
 // =============================
@@ -227,16 +330,107 @@ sendBtn.addEventListener("click", async () => {
 	const content = input.value.trim();
 	if (!content || !currentChatId) return;
 
+	const sendToChatId = currentChatId;
+
 	const res = await fetchWithAutoRefresh(
 		`http://localhost:3000/api/v1/messages`,
 		{
 			method: "POST",
-			body: JSON.stringify({ chatId: currentChatId, content }),
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ chatId: sendToChatId, content }),
 		}
 	);
 
-	if (res.ok) input.value = "";
+	if (res.ok) {
+		input.value = "";
+		// Don't appendMessage here
+		// Wait for socket event to append
+	}
 });
+
+// =============================
+// 🔔 NOTIFICATION DISPLAY
+// =============================
+bellBtn.addEventListener("click", async () => {
+	const visible = notificationBox.style.display === "block";
+	notificationBox.style.display = visible ? "none" : "block";
+
+	let page = 1;
+	const limit = 5;
+	const notificationListRes = await fetchWithAutoRefresh(
+		`${baseURL}/notifications?page=${page}&limit=${limit}`,
+		{
+			credentials: "include",
+		}
+	);
+	if (!notificationListRes.ok) {
+		return;
+	}
+
+	const notificationListData = await notificationListRes.json();
+	renderNotificationList(notificationBox, notificationListData);
+
+	if (!visible) {
+		notificationCount = 0;
+		bellBtn.setAttribute("data-count", "0");
+	}
+});
+
+function renderNotificationList(listEl, data) {
+	listEl.innerHTML = "";
+	if (data.length === 0) {
+		const li = document.createElement("li");
+		li.textContent = "No notifications.";
+		listEl.appendChild(li);
+		return;
+	}
+
+	data.forEach((item) => {
+		const li = document.createElement("li");
+		li.textContent = item.message;
+		li.style.backgroundColor = item.is_read ? "white" : "lightblue";
+		li.style.display = "block";
+		li.style.width = "100%";
+		li.style.padding = "0.75rem 1rem";
+		li.style.marginBottom = "0.5rem";
+		li.style.border = "1px solid #ccc";
+		li.style.borderRadius = "0.5rem";
+		li.style.cursor = "pointer";
+		li.style.transition = "background-color 0.3s ease";
+
+		li.addEventListener("click", async () => {
+			if (item.is_read) return; // Already read, do nothing
+
+			// Send PATCH request
+			await fetchWithAutoRefresh(`${baseURL}/notifications/${item.id}`, {
+				method: "PATCH",
+				credentials: "include",
+			});
+
+			// If message notification, navigate to chat
+			if (item.message.includes("sent you a message!")) {
+				// Extract chat ID if available and join that room
+				// This would need additional logic to extract chat ID from notification
+				// For now, just refresh the chat list
+				loadChats();
+			}
+
+			// Update UI to fix it live
+			li.style.backgroundColor = "white";
+			item.is_read = 1;
+		});
+
+		li.addEventListener("mouseover", () => {
+			li.style.backgroundColor = item.is_read ? "#f5f5f5" : "#add8e6"; // light gray or stay light blue
+		});
+
+		li.addEventListener("mouseout", () => {
+			li.style.backgroundColor = item.is_read ? "white" : "lightblue";
+		});
+
+		listEl.appendChild(li);
+	});
+}
 
 // =============================
 // 🚪 LEAVE ROOM ON PAGE EXIT
@@ -246,3 +440,55 @@ window.addEventListener("beforeunload", () => {
 		socket.emit("leaveRoom", currentChatId);
 	}
 });
+
+// =============================
+// 🚦 AUTH UTILITY
+// =============================
+async function checkAuthentication() {
+	const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
+	return res.ok; // Returns true if authenticated, false otherwise
+}
+
+// Run authentication check when page loads
+checkAuthentication().then(async (isAuthenticated) => {
+	if (!isAuthenticated) {
+		// Not authenticated, redirect to login page
+		window.location.href = "index.html";
+		return;
+	}
+
+	// Show the body (dashboard content) if authenticated
+	document.body.style.visibility = "visible";
+	document.body.style.opacity = "1";
+
+	// Wait for socket connection before proceeding
+	if (!socket.connected) {
+		await new Promise((resolve) => socket.once("connect", resolve));
+	}
+
+	// We DO NOT call loadChats() here since it's already called by the socket.on('connect') event
+	// We also don't check for chatId parameter here anymore - it's handled in the socket.on('connect') event
+});
+
+// Add logout functionality
+if (logoutBtn) {
+	logoutBtn.addEventListener("click", async () => {
+		const deviceId = localStorage.getItem("deviceId");
+		if (!deviceId) return alert("Missing deviceId");
+
+		const res = await fetchWithAutoRefresh(`${baseURL}/auth/logout`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify({ deviceId }),
+		});
+
+		if (res.ok) {
+			window.location.href = "index.html";
+		} else {
+			alert("Logout failed ❌");
+		}
+	});
+}
+
+// We're removing this event listener as we're now handling the chatId parameter in the socket.on('connect') event

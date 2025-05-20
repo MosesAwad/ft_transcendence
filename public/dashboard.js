@@ -16,7 +16,7 @@ let notificationCount = 0;
 
 /* NOTIFICATION SECTION */
 
-console.log('Trying to connect to:', window.location.hostname);
+console.log("Trying to connect to:", window.location.hostname);
 const socket = io("http://localhost:3000", {
 	withCredentials: true,
 });
@@ -40,7 +40,6 @@ function addNotification(message) {
 
 socket.on("messageReceivedInform", (data) => {
 	addNotification(data.message);
-	loadFriendData();
 });
 
 socket.on("friendRequestInform", (data) => {
@@ -264,22 +263,18 @@ bellBtn.addEventListener("click", async () => {
 		li.style.borderRadius = "0.5rem";
 		li.style.cursor = "pointer";
 		li.style.transition = "background-color 0.3s ease";
-		
 
 		li.addEventListener("click", async () => {
 			if (item.is_read) return; // Already read, do nothing
-		
-			// Send PATCH request
-			await fetchWithAutoRefresh(
-				`${baseURL}/notifications/${item.id}`,
-				{
-					method: "PATCH",
-					credentials: "include",
-				}
-			);
 
-			if (item.message.includes("sent you a message!")) {
-				window.location.href = "http://localhost:3000/chat.html";
+			// Send PATCH request
+			await fetchWithAutoRefresh(`${baseURL}/notifications/${item.id}`, {
+				method: "PATCH",
+				credentials: "include",
+			});
+
+			if (item.message.includes("sent you a message!") && item.chat_id) {
+				window.location.href = `http://localhost:3000/chat.html?chatId=${item.chat_id}`;
 			}
 
 			// Update UI to fix it live without the user having to close the notification box and re-open
@@ -292,7 +287,7 @@ bellBtn.addEventListener("click", async () => {
 		li.addEventListener("mouseout", () => {
 			li.style.backgroundColor = item.is_read ? "white" : "lightblue";
 		});
-		
+
 		return li;
 	});
 

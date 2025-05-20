@@ -14,6 +14,7 @@ module.exports = (notificationModel, io, onlineUsers) => ({
 		await notificationModel.createNotification(
 			senderId,
 			receiverUserId,
+			null,
 			"friendRequest",
 			`${username} sent you a friend request!`,
 			false
@@ -38,6 +39,7 @@ module.exports = (notificationModel, io, onlineUsers) => ({
 		await notificationModel.createNotification(
 			accepterId,
 			requesterId,
+			null,
 			"friendRequest",
 			`${accepterUsername} has accepted your friend request!`,
 			false
@@ -53,6 +55,7 @@ module.exports = (notificationModel, io, onlineUsers) => ({
 		await notificationModel.createNotification(
 			requesterId,
 			accepterId,
+			null,
 			"friendRequest",
 			`You are now friends with ${requesterUsername}`,
 			false

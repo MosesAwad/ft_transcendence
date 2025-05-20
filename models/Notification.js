@@ -5,7 +5,7 @@ class Notification {
 		this.db = db;
 	}
 
-	async createNotification(senderId, receiverId, type, message, systemWide) {
+	async createNotification(senderId, receiverId, chatId, type, message, systemWide) {
 		if (!systemWide && !senderId) {
 			throw new Error(
 				"Missing required notification data, unable to create notification"
@@ -19,26 +19,39 @@ class Notification {
 
 		if (type === "message") {
 			const existingMessage = await this.db("notifications")
-			.where({
-				sender_id: senderId,
-				receiver_id: receiverId,
-				type,
-				is_read: false,
-			})
-			.first();
-			
-			console.log(existingMessage);
-			// Avoid cluttering receiver UI with "user X has sent you a message"
+				.where({
+					sender_id: senderId,
+					receiver_id: receiverId,
+					chat_id: chatId,
+					type,
+				})
+				.orderBy("updated_at", "desc") // Just in case there are old ones, but there shouldn't be any unless there's a bug
+				.first();
+
+			// Avoid cluttering receiver UI with "user X has sent you a message" and use a "rotating" notification instead
 			if (existingMessage) {
-				const newCount = existingMessage.message_count + 1;
-				const senderUsername = existingMessage.message.split(' ')[0];
-				await this.db("notifications")
-					.where({ id: existingMessage.id })
-					.update({
-						message: `${senderUsername} has sent you ${newCount} messages!`,
-						message_count: newCount,
-						updated_at: this.db.raw("CURRENT_TIMESTAMP"),
-					});
+				const senderUsername = existingMessage.message.split(" ")[0];
+
+				if (!existingMessage.is_read) {
+					const newCount = existingMessage.message_count + 1;
+					await this.db("notifications")
+						.where({ id: existingMessage.id })
+						.update({
+							message: `${senderUsername} has sent you ${newCount} messages!`,
+							message_count: newCount,
+							updated_at: this.db.raw("CURRENT_TIMESTAMP"),
+						});
+				} else {
+					// Reset it to a new unread message
+					await this.db("notifications")
+						.where({ id: existingMessage.id })
+						.update({
+							message: `${senderUsername} has sent you a message!`,
+							message_count: 1,
+							is_read: false,
+							updated_at: this.db.raw("CURRENT_TIMESTAMP"),
+						});
+				}
 
 				return;
 			}
@@ -47,6 +60,7 @@ class Notification {
 		await this.db("notifications").insert({
 			sender_id: senderId,
 			receiver_id: receiverId,
+			chat_id: type === "message" ? chatId : null,
 			type,
 			message,
 		});
