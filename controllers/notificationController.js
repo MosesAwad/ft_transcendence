@@ -1,11 +1,24 @@
 module.exports = (notificationModel) => ({
-	updateNotification: async (request, reply) => {
+	updateNotificationById: async (request, reply) => {
 		const { notificationId } = request.params;
 		const {
 			user: { id: userId },
 		} = request.user;
-		await notificationModel.markAsRead(notificationId, userId);
 
+		await notificationModel.markOtherNotificationAsRead(
+			notificationId,
+			userId
+		);
+		reply.send({ success: true });
+	},
+
+	updateNotificationsByQuery: async (request, reply) => {
+		const {
+			user: { id: userId },
+		} = request.user;
+		const { chatId } = request.query;
+
+		await notificationModel.markMessageNotificationAsRead(chatId, userId);
 		reply.send({ success: true });
 	},
 

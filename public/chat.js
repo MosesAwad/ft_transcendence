@@ -122,7 +122,11 @@ async function loadChats() {
 				row.classList.add("active");
 			}
 
-			row.addEventListener("click", () => joinRoom(chat_id));
+			row.addEventListener("click", async () => {
+				joinRoom(chat_id);
+				// After joining a room, mark notifications as read for the current chat
+c
+			});
 			fragment.appendChild(row);
 		}
 
@@ -284,7 +288,7 @@ socket.on("connect", () => {
 	const chatIdString = params.get("chatId");
 	if (chatIdString) {
 		console.log("Found chatId in URL, joining room:", chatIdString);
-		const chatId = parseInt(chatIdString); // convert it to integer because it comes as a string in the params 
+		const chatId = parseInt(chatIdString); // convert it to integer because it comes as a string in the params
 		// We need to wait a bit to make sure the chats have been loaded
 		setTimeout(() => {
 			joinRoom(chatId);

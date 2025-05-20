@@ -5,7 +5,14 @@ class Notification {
 		this.db = db;
 	}
 
-	async createNotification(senderId, receiverId, chatId, type, message, systemWide) {
+	async createNotification(
+		senderId,
+		receiverId,
+		chatId,
+		type,
+		message,
+		systemWide
+	) {
 		if (!systemWide && !senderId) {
 			throw new Error(
 				"Missing required notification data, unable to create notification"
@@ -111,7 +118,7 @@ class Notification {
 		return notifications;
 	}
 
-	async markAsRead(notificationId, userId) {
+	async markOtherNotificationAsRead(notificationId, userId) {
 		const notification = await this.db("notifications")
 			.where("id", notificationId)
 			.first();
@@ -127,6 +134,22 @@ class Notification {
 		}
 		const updatedNotification = await this.db("notifications")
 			.where("id", notificationId)
+			.update({ is_read: 1 })
+			.returning("*");
+		return updatedNotification;
+	}
+
+	async markMessageNotificationAsRead(chatId, userId) {
+		const notification = await this.db("notifications")
+			.where({ chat_id: chatId, receiver_id: userId, is_read: 0 })
+			.first();
+		if (!notification) {
+			throw new CustomError.BadRequestError(
+				"No such notification was found"
+			);
+		}
+		const updatedNotification = await this.db("notifications")
+			.where("id", notification.id)
 			.update({ is_read: 1 })
 			.returning("*");
 		return updatedNotification;
