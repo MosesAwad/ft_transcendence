@@ -125,7 +125,23 @@ async function loadChats() {
 			row.addEventListener("click", async () => {
 				joinRoom(chat_id);
 				// After joining a room, mark notifications as read for the current chat
-c
+				const res = await fetchWithAutoRefresh(
+					`${baseURL}/notifications?chatId=${chat_id}`,
+					{
+						method: "PATCH",
+						credentials: "include",
+					}
+				);
+				if (res.ok) {
+					const data = await res.json();
+					notificationCount = notificationCount - data.messageCounter;
+					bellBtn.setAttribute("data-count", notificationCount);
+				}
+
+				// Update the URL to reflect the current chat when navigating directly
+				const url = new URL(window.location.href);
+				url.searchParams.set("chatId", chat_id);
+				window.history.pushState({}, "", url);
 			});
 			fragment.appendChild(row);
 		}
@@ -355,12 +371,54 @@ sendBtn.addEventListener("click", async () => {
 // =============================
 // 🔔 NOTIFICATION DISPLAY
 // =============================
+async function initializeNotificationCounter() {
+	try {
+		// Updated the fetch URL to include page and limit queries
+		const page = 1;
+		const limit = 5;
+		const res = await fetchWithAutoRefresh(
+			`${baseURL}/notifications?page=${page}&limit=${limit}`,
+			{
+				credentials: "include",
+			}
+		);
+		if (!res.ok) throw new Error("Failed to fetch notifications");
+
+		const notifications = await res.json();
+		notificationCount = notifications.filter(
+			(n) => n.is_opened === 0
+		).length;
+		bellBtn.setAttribute("data-count", notificationCount);
+	} catch (error) {
+		console.error("Error initializing notification counter:", error);
+	}
+}
+
 bellBtn.addEventListener("click", async () => {
 	const visible = notificationBox.style.display === "block";
 	notificationBox.style.display = visible ? "none" : "block";
 
+	if (!visible) {
+		try {
+			// Mark all notifications as opened
+			const res = await fetchWithAutoRefresh(`${baseURL}/notifications`, {
+				method: "PATCH",
+				credentials: "include",
+			});
+			if (!res.ok)
+				throw new Error("Failed to mark notifications as opened");
+
+			// Reset the counter
+			notificationCount = 0;
+			bellBtn.setAttribute("data-count", "0");
+		} catch (error) {
+			console.error("Error marking notifications as opened:", error);
+		}
+	}
+
 	let page = 1;
 	const limit = 5;
+	// Updated the fetch URL to include page and limit queries
 	const notificationListRes = await fetchWithAutoRefresh(
 		`${baseURL}/notifications?page=${page}&limit=${limit}`,
 		{
@@ -373,11 +431,6 @@ bellBtn.addEventListener("click", async () => {
 
 	const notificationListData = await notificationListRes.json();
 	renderNotificationList(notificationBox, notificationListData);
-
-	if (!visible) {
-		notificationCount = 0;
-		bellBtn.setAttribute("data-count", "0");
-	}
 });
 
 function renderNotificationList(listEl, data) {
@@ -403,25 +456,44 @@ function renderNotificationList(listEl, data) {
 		li.style.transition = "background-color 0.3s ease";
 
 		li.addEventListener("click", async () => {
-			if (item.is_read) return; // Already read, do nothing
+			// Updated to redirect user to the chat if the notification is of type 'message'
+			if (item.type === "message" && item.chat_id) {
+				// Send PATCH request to mark as read
+				await fetchWithAutoRefresh(
+					`${baseURL}/notifications/${item.id}`,
+					{
+						method: "PATCH",
+						credentials: "include",
+					}
+				);
 
-			// Send PATCH request
-			await fetchWithAutoRefresh(`${baseURL}/notifications/${item.id}`, {
-				method: "PATCH",
-				credentials: "include",
-			});
+				// Update UI to reflect the change
+				li.style.backgroundColor = "white";
+				item.is_read = true;
 
-			// If message notification, navigate to chat
-			if (item.message.includes("sent you a message!")) {
-				// Extract chat ID if available and join that room
-				// This would need additional logic to extract chat ID from notification
-				// For now, just refresh the chat list
-				loadChats();
+				console.log("Redirecting to chat:", item.chat_id);
+				window.location.href = `chat.html?chatId=${item.chat_id}`;
+				return; // Prevent further execution after redirection
 			}
 
-			// Update UI to fix it live
-			li.style.backgroundColor = "white";
-			item.is_read = 1;
+			if (item.is_read) return; // Already read, do nothing
+
+			try {
+				// Send PATCH request to mark as read
+				await fetchWithAutoRefresh(
+					`${baseURL}/notifications/${item.id}`,
+					{
+						method: "PATCH",
+						credentials: "include",
+					}
+				);
+
+				// Update UI to reflect the change
+				li.style.backgroundColor = "white";
+				item.is_read = true;
+			} catch (error) {
+				console.error("Error marking notification as read:", error);
+			}
 		});
 
 		li.addEventListener("mouseover", () => {
@@ -435,6 +507,9 @@ function renderNotificationList(listEl, data) {
 		listEl.appendChild(li);
 	});
 }
+
+// Initialize notification counter on page load
+initializeNotificationCounter();
 
 // =============================
 // 🚪 LEAVE ROOM ON PAGE EXIT

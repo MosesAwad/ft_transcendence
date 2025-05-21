@@ -46,6 +46,7 @@ class Notification {
 						.update({
 							message: `${senderUsername} has sent you ${newCount} messages!`,
 							message_count: newCount,
+							is_opened: false,
 							updated_at: this.db.raw("CURRENT_TIMESTAMP"),
 						});
 				} else {
@@ -56,6 +57,7 @@ class Notification {
 							message: `${senderUsername} has sent you a message!`,
 							message_count: 1,
 							is_read: false,
+							is_opened: false,
 							updated_at: this.db.raw("CURRENT_TIMESTAMP"),
 						});
 				}
@@ -118,12 +120,12 @@ class Notification {
 		return notifications;
 	}
 
-	async markOtherNotificationAsRead(notificationId, userId) {
+	async markNotificationAsRead(notificationId, userId) {
 		const notification = await this.db("notifications")
 			.where("id", notificationId)
 			.first();
 		if (!notification) {
-			throw new CustomError.BadRequestError(
+			throw new CustomError.NotFoundError(
 				"No such notification was found"
 			);
 		}
@@ -139,20 +141,29 @@ class Notification {
 		return updatedNotification;
 	}
 
-	async markMessageNotificationAsRead(chatId, userId) {
+	async markAllNotificationsAsOpened(userId) {
+		const notifications = await this.db("notifications")
+			.where({ is_opened: 0, receiver_id: userId })
+			.update({ is_opened: 1 })
+			.returning("*");
+		return notifications;
+	}
+
+	async markMessageNotificationAsOpened(chatId, userId) {
 		const notification = await this.db("notifications")
-			.where({ chat_id: chatId, receiver_id: userId, is_read: 0 })
+			.where({ chat_id: chatId, receiver_id: userId, is_opened: 0 })
 			.first();
 		if (!notification) {
-			throw new CustomError.BadRequestError(
+			throw new CustomError.NotFoundError(
 				"No such notification was found"
 			);
 		}
-		const updatedNotification = await this.db("notifications")
+		const captureMessageCount = notification.message_count;
+		await this.db("notifications")
 			.where("id", notification.id)
-			.update({ is_read: 1 })
+			.update({ is_opened: 1 })
 			.returning("*");
-		return updatedNotification;
+		return captureMessageCount;
 	}
 }
 

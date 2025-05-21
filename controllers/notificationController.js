@@ -5,20 +5,29 @@ module.exports = (notificationModel) => ({
 			user: { id: userId },
 		} = request.user;
 
-		await notificationModel.markOtherNotificationAsRead(
+		await notificationModel.markNotificationAsRead(
 			notificationId,
 			userId
 		);
 		reply.send({ success: true });
 	},
 
-	updateNotificationsByQuery: async (request, reply) => {
+	updateUnopenedMessageNotification: async (request, reply) => {
 		const {
 			user: { id: userId },
 		} = request.user;
 		const { chatId } = request.query;
 
-		await notificationModel.markMessageNotificationAsRead(chatId, userId);
+		const messageCounter = await notificationModel.markMessageNotificationAsOpened(chatId, userId);
+		reply.send({ success: true, messageCounter });
+	},
+
+	updateAllUnopenedNotifications: async (request, reply) => {
+		const {
+			user: { id: userId },
+		} = request.user;
+
+		await notificationModel.markAllNotificationsAsOpened(userId);
 		reply.send({ success: true });
 	},
 

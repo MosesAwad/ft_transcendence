@@ -1,10 +1,18 @@
 require("dotenv").config();
 const fastify = require("fastify")({
-	// logger: true,
 	logger: {
 		level: "error",
+		transport: {
+			target: "pino-pretty",
+			options: {
+				colorize: true, // Adds color to the logs
+				translateTime: "SYS:standard", // Human-readable timestamp
+				ignore: "pid,hostname", // Hide unneeded fields
+			},
+		},
 	},
 });
+
 const path = require("path");
 const connectDB = require("./connect/connect");
 const authRoutes = require("./routes/authRoutes");

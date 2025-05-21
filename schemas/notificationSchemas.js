@@ -17,6 +17,19 @@ const listNotificationOpts = {
 	},
 };
 
+const updateNotificationByIdOpts = {
+	body: {
+		type: "object",
+		properties: {
+			isRead: { type: "boolean" },
+			isOpened: { type: "boolean" },
+		},
+		oneOf: [{ required: ["isRead"] }, { required: ["isOpened"] }],
+		additionalProperties: false,
+	},
+};
+
 module.exports = {
 	listNotificationOpts,
+	updateNotificationByIdOpts,
 };
