@@ -21,12 +21,20 @@ const bellBtn = document.getElementById("bellBtn");
 const notificationBox = document.getElementById("notifications");
 const logoutBtn = document.getElementById("logoutBtn");
 
+// Added mailbox notification elements
+const mailboxBtn = document.getElementById("mailboxBtn");
+
+// Separate notification boxes for general and message notifications
+const generalNotificationBox = document.getElementById("generalNotifications");
+const messageNotificationBox = document.getElementById("messageNotifications");
+
 // =============================
 // 🔄 STATE VARIABLES
 // =============================
 let currentChatId = null;
 let currentUserId = null;
 let notificationCount = 0;
+let mailboxNotificationCount = 0;
 
 // =============================
 // 📢 NOTIFICATION HANDLING
@@ -117,6 +125,7 @@ async function loadChats() {
 			// Add this data attribute to identify the chat row
 			row.dataset.chatId = chat_id;
 
+			console.log(row.dataset.chatId, ", ", chat_id);
 			// Check if this is the current active chat
 			if (currentChatId === chat_id) {
 				row.classList.add("active");
@@ -126,7 +135,7 @@ async function loadChats() {
 				joinRoom(chat_id);
 				// After joining a room, mark notifications as read for the current chat
 				const res = await fetchWithAutoRefresh(
-					`${baseURL}/notifications?chatId=${chat_id}`,
+					`${baseURL}/notifications/messages/by-chat/${chat_id}`,
 					{
 						method: "PATCH",
 						credentials: "include",
@@ -134,10 +143,12 @@ async function loadChats() {
 				);
 				if (res.ok) {
 					const data = await res.json();
-					notificationCount = notificationCount - data.messageCounter;
-					bellBtn.setAttribute("data-count", notificationCount);
+					mailboxNotificationCount--;
+					mailboxBtn.setAttribute(
+						"data-count",
+						mailboxNotificationCount
+					);
 				}
-
 				// Update the URL to reflect the current chat when navigating directly
 				const url = new URL(window.location.href);
 				url.searchParams.set("chatId", chat_id);
@@ -329,14 +340,50 @@ socket.on("newMessage", (message) => {
 });
 
 // Added socket event listeners for notifications
-socket.on("messageReceivedInform", (data) => {
-	addNotification(data.message);
+socket.on("messageReceivedInform", async (data) => {
+	// Instead of checking DOM, fetch latest notifications from backend
+	const page = 1;
+	const limit = 5;
+	const res = await fetchWithAutoRefresh(
+		`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+		{ credentials: "include" }
+	);
+
+	if (res.ok) {
+		const notifications = await res.json();
+		// Update mailbox counter based on unique chats with unread messages
+		const unreadChats = new Set(
+			notifications.filter((n) => !n.is_read).map((n) => n.chat_id)
+		);
+		mailboxNotificationCount = unreadChats.size;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
+
+		// Update notification display
+		renderNotificationList(messageNotificationBox, notifications);
+	}
+
 	// Reload chats to update the order
 	debouncedReloadChats();
 });
 
 socket.on("friendRequestInform", (data) => {
-	addNotification(data.message);
+	const placeholder = generalNotificationBox.querySelector("em");
+	if (placeholder) placeholder.remove();
+
+	const div = document.createElement("div");
+	div.classList.add("notification");
+	div.textContent = data.message;
+	if (generalNotificationBox.firstChild) {
+		generalNotificationBox.insertBefore(
+			div,
+			generalNotificationBox.firstChild
+		);
+	} else {
+		generalNotificationBox.appendChild(div);
+	}
+
+	notificationCount++;
+	bellBtn.setAttribute("data-count", notificationCount);
 });
 
 socket.on("friendRequestAccept", (data) => {
@@ -377,7 +424,7 @@ async function initializeNotificationCounter() {
 		const page = 1;
 		const limit = 5;
 		const res = await fetchWithAutoRefresh(
-			`${baseURL}/notifications?page=${page}&limit=${limit}`,
+			`${baseURL}/notifications/others?page=${page}&limit=${limit}`,
 			{
 				credentials: "include",
 			}
@@ -401,10 +448,13 @@ bellBtn.addEventListener("click", async () => {
 	if (!visible) {
 		try {
 			// Mark all notifications as opened
-			const res = await fetchWithAutoRefresh(`${baseURL}/notifications`, {
-				method: "PATCH",
-				credentials: "include",
-			});
+			const res = await fetchWithAutoRefresh(
+				`${baseURL}/notifications/others`,
+				{
+					method: "PATCH",
+					credentials: "include",
+				}
+			);
 			if (!res.ok)
 				throw new Error("Failed to mark notifications as opened");
 
@@ -420,7 +470,7 @@ bellBtn.addEventListener("click", async () => {
 	const limit = 5;
 	// Updated the fetch URL to include page and limit queries
 	const notificationListRes = await fetchWithAutoRefresh(
-		`${baseURL}/notifications?page=${page}&limit=${limit}`,
+		`${baseURL}/notifications/others?page=${page}&limit=${limit}`,
 		{
 			credentials: "include",
 		}
@@ -433,6 +483,77 @@ bellBtn.addEventListener("click", async () => {
 	renderNotificationList(notificationBox, notificationListData);
 });
 
+// Function to handle mailbox notifications
+async function initializeMailboxNotificationCounter() {
+	const page = 1;
+	const limit = 5;
+	try {
+		const res = await fetchWithAutoRefresh(
+			`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+			{
+				credentials: "include",
+			}
+		);
+		if (!res.ok) throw new Error("Failed to fetch mailbox notifications");
+
+		const notifications = await res.json();
+		mailboxNotificationCount = notifications.filter(
+			(n) => n.is_read === 0
+		).length;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
+	} catch (error) {
+		console.error(
+			"Error initializing mailbox notification counter:",
+			error
+		);
+	}
+}
+
+mailboxBtn.addEventListener("click", async () => {
+	const visible = notificationBox.style.display === "block";
+	notificationBox.style.display = visible ? "none" : "block";
+
+	if (!visible) {
+		try {
+			// Mark all mailbox notifications as opened
+			const res = await fetchWithAutoRefresh(
+				`${baseURL}/notifications/messages`,
+				{
+					method: "PATCH",
+					credentials: "include",
+				}
+			);
+			if (!res.ok)
+				throw new Error(
+					"Failed to mark mailbox notifications as opened"
+				);
+		} catch (error) {
+			console.error(
+				"Error marking mailbox notifications as opened:",
+				error
+			);
+		}
+	}
+
+	const page = 1;
+	const limit = 5;
+	const mailboxNotificationListRes = await fetchWithAutoRefresh(
+		`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+		{
+			credentials: "include",
+		}
+	);
+	if (!mailboxNotificationListRes.ok) {
+		return;
+	}
+
+	const mailboxNotificationListData = await mailboxNotificationListRes.json();
+	renderNotificationList(notificationBox, mailboxNotificationListData);
+});
+
+// =============================
+// RENDER NOTIFICATION LIST
+// =============================
 function renderNotificationList(listEl, data) {
 	listEl.innerHTML = "";
 	if (data.length === 0) {
@@ -460,17 +581,43 @@ function renderNotificationList(listEl, data) {
 			if (item.type === "message" && item.chat_id) {
 				// Send PATCH request to mark as read
 				await fetchWithAutoRefresh(
-					`${baseURL}/notifications/${item.id}`,
+					`${baseURL}/notifications/messages/by-chat/${item.chat_id}`,
 					{
 						method: "PATCH",
 						credentials: "include",
 					}
 				);
 
-				// Update UI to reflect the change
-				li.style.backgroundColor = "white";
-				item.is_read = true;
+				// Refetch message notifications to update the counter
+				const page = 1;
+				const limit = 5;
+				const mailboxNotificationListRes = await fetchWithAutoRefresh(
+					`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+					{
+						credentials: "include",
+					}
+				);
+				if (mailboxNotificationListRes.ok) {
+					const mailboxNotificationListData =
+						await mailboxNotificationListRes.json();
+					renderNotificationList(
+						messageNotificationBox,
+						mailboxNotificationListData
+					);
 
+					console.log("sjadhjashdjsahdjashdj");
+					// Update the mailbox notification counter
+					mailboxNotificationCount =
+						mailboxNotificationListData.filter(
+							(n) => n.is_read === 0
+						).length;
+					mailboxBtn.setAttribute(
+						"data-count",
+						mailboxNotificationCount
+					);
+				}
+
+				// Redirect to the chat
 				console.log("Redirecting to chat:", item.chat_id);
 				window.location.href = `chat.html?chatId=${item.chat_id}`;
 				return; // Prevent further execution after redirection
@@ -481,7 +628,7 @@ function renderNotificationList(listEl, data) {
 			try {
 				// Send PATCH request to mark as read
 				await fetchWithAutoRefresh(
-					`${baseURL}/notifications/${item.id}`,
+					`${baseURL}/notifications/others/${item.id}`,
 					{
 						method: "PATCH",
 						credentials: "include",
@@ -510,6 +657,7 @@ function renderNotificationList(listEl, data) {
 
 // Initialize notification counter on page load
 initializeNotificationCounter();
+initializeMailboxNotificationCounter();
 
 // =============================
 // 🚪 LEAVE ROOM ON PAGE EXIT
@@ -569,5 +717,3 @@ if (logoutBtn) {
 		}
 	});
 }
-
-// We're removing this event listener as we're now handling the chatId parameter in the socket.on('connect') event

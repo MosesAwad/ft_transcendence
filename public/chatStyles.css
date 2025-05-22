@@ -34,12 +34,12 @@ body {
 }
 
 .chatRow {
-    padding: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    background-color: #e0e0e0;
-    transition: background-color 0.2s ease-in-out;
-    margin-bottom: 8px; /* add this for vertical spacing */
+	padding: 10px;
+	border-radius: 5px;
+	cursor: pointer;
+	background-color: #e0e0e0;
+	transition: background-color 0.2s ease-in-out;
+	margin-bottom: 8px; /* add this for vertical spacing */
 }
 
 .chatRow:hover {
@@ -231,4 +231,45 @@ body {
 
 .notification:last-child {
 	border-bottom: none;
+}
+
+#mailboxBtn {
+	position: relative;
+	cursor: pointer;
+	font-size: 1.5rem;
+	margin-left: 1rem;
+}
+
+#mailboxBtn::after {
+	content: attr(data-count);
+	position: absolute;
+	top: -5px;
+	right: -5px;
+	background: red;
+	color: white;
+	border-radius: 50%;
+	width: 1.2rem;
+	height: 1.2rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	visibility: hidden;
+}
+
+#mailboxBtn[data-count]:not([data-count="0"])::after {
+	visibility: visible;
+}
+
+#messageNotifications {
+	display: none; /* Hidden by default */
+	position: absolute;
+	top: 50px; /* Adjust as needed */
+	right: 10px; /* Adjust as needed */
+	background-color: white;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	padding: 10px;
+	z-index: 1000;
 }

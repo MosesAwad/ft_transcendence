@@ -2,30 +2,44 @@ Event names:
 * joinRoom
 * leaveRoom
 * newMessage
+* messageReceivedInform
 
 Notes:
 
-    Event Name:
-        leaveRoom
+        Event Name:
+            leaveRoom
 
-    Description:
-        Front-end must emit it when:
-            * User switches to another chat
-            * User closes/refreshes/switches the page
-            * User logs out
+        Description:
+            Front-end must emit it when:
+                * User switches to another chat
+                * User closes/refreshes/switches the page
+                * User logs out
     
     ==========================================================================================
 
-    Event Name:
-        newMessage
-    
-    Description:
-        Front-end must create a listener for it, here is a sample:
+        Event Name:
+            newMessage
         
-            socket.on("newMessage", (message) => {
-                if (message.chat_id === currentChatId) {
-                    appendMessage(message);
-                }
-            });
+        Description:
+            Front-end must create a listener for it, here is a sample:
+            
+                socket.on("newMessage", (message) => {
+                    if (message.chat_id === currentChatId) {
+                        appendMessage(message);
+                    }
+                });
 
-        because the back-end emits this event when a new message is sent in a chat.
+            because the back-end emits this event when a new message is sent in a chat.
+
+    ==========================================================================================
+
+        Event Name:
+            messageReceivedInform
+
+        Description:
+            Front-end must create a listener for it.
+
+            If the user is online and not actively in the chatroom, the backend would detect that 
+            and send the user a notification letting them know that they have received a message. 
+            The front-end should now add that to the notification box associated with messages (a 
+            mailbox).

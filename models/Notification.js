@@ -110,9 +110,10 @@ class Notification {
 			.del();
 	}
 
-	async listNotifications(page, limit, receiverId) {
+	async listOtherNotifications(page, limit, receiverId) {
 		const notifications = await this.db("notifications")
 			.where("receiver_id", receiverId)
+			.whereNot("type", "message")
 			.orderBy("updated_at", "desc") // descending meaning newest ("largest") date first
 			.limit(limit)
 			.offset((page - 1) * limit);
@@ -120,13 +121,42 @@ class Notification {
 		return notifications;
 	}
 
-	async markNotificationAsRead(notificationId, userId) {
+	async listMessageNotifications(page, limit, receiverId) {
+		const notifications = await this.db("notifications")
+			.where({ receiver_id: receiverId, type: "message", is_read: 0 })
+			.orderBy("updated_at", "desc") // descending meaning newest ("largest") date first
+			.limit(limit)
+			.offset((page - 1) * limit);
+
+		return notifications;
+	}
+
+	// CC
+	async indirectMarkMessageNotificiationAsRead(chatId, userId) {
 		const notification = await this.db("notifications")
-			.where("id", notificationId)
+			.where({ chat_id: chatId, receiver_id: userId, is_read: 0 })
 			.first();
 		if (!notification) {
 			throw new CustomError.NotFoundError(
-				"No such notification was found"
+				"No such message notification was found"
+			);
+		}
+
+		await this.db("notifications")
+			.where("id", notification.id)
+			.update({ is_read: 1, is_opened: 1 })
+			.returning("*");
+	}
+
+	// CC
+	async markNonMessageNotificationAsRead(notificationId, userId) {
+		const notification = await this.db("notifications")
+			.where("id", notificationId)
+			.andWhereNot("type", "message")
+			.first();
+		if (!notification) {
+			throw new CustomError.NotFoundError(
+				"No such non-message notification was found"
 			);
 		}
 		if (notification.receiver_id !== userId) {
@@ -141,29 +171,14 @@ class Notification {
 		return updatedNotification;
 	}
 
-	async markAllNotificationsAsOpened(userId) {
+	// CC
+	async markAllNonMessageNotificationsAsOpened(userId) {
 		const notifications = await this.db("notifications")
 			.where({ is_opened: 0, receiver_id: userId })
+			.whereNot("type", "message")
 			.update({ is_opened: 1 })
 			.returning("*");
 		return notifications;
-	}
-
-	async markMessageNotificationAsOpened(chatId, userId) {
-		const notification = await this.db("notifications")
-			.where({ chat_id: chatId, receiver_id: userId, is_opened: 0 })
-			.first();
-		if (!notification) {
-			throw new CustomError.NotFoundError(
-				"No such notification was found"
-			);
-		}
-		const captureMessageCount = notification.message_count;
-		await this.db("notifications")
-			.where("id", notification.id)
-			.update({ is_opened: 1 })
-			.returning("*");
-		return captureMessageCount;
 	}
 }
 

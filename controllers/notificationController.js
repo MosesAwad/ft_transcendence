@@ -1,42 +1,59 @@
 module.exports = (notificationModel) => ({
-	updateNotificationById: async (request, reply) => {
+	// CC
+	markNonMessageNotificationAsRead: async (request, reply) => {
 		const { notificationId } = request.params;
 		const {
 			user: { id: userId },
 		} = request.user;
 
-		await notificationModel.markNotificationAsRead(
+		await notificationModel.markNonMessageNotificationAsRead(
 			notificationId,
 			userId
 		);
 		reply.send({ success: true });
 	},
 
-	updateUnopenedMessageNotification: async (request, reply) => {
+	// CC
+	indirectMarkMessageNotificiationAsRead: async (request, reply) => {
 		const {
 			user: { id: userId },
 		} = request.user;
-		const { chatId } = request.query;
+		const { chatId } = request.params;
 
-		const messageCounter = await notificationModel.markMessageNotificationAsOpened(chatId, userId);
-		reply.send({ success: true, messageCounter });
-	},
-
-	updateAllUnopenedNotifications: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-
-		await notificationModel.markAllNotificationsAsOpened(userId);
+		await notificationModel.indirectMarkMessageNotificiationAsRead(chatId, userId);
 		reply.send({ success: true });
 	},
 
-	listNotifications: async (request, reply) => {
+	// CC
+	markAllNonMessageNotificationsAsOpened: async (request, reply) => {
+		const {
+			user: { id: userId },
+		} = request.user;
+
+		await notificationModel.markAllNonMessageNotificationsAsOpened(userId);
+		reply.send({ success: true });
+	},
+
+	listOtherNotifications: async (request, reply) => {
 		const { page, limit } = request.query;
 		const {
 			user: { id: userId },
 		} = request.user;
-		const notifications = await notificationModel.listNotifications(
+		const notifications = await notificationModel.listOtherNotifications(
+			page,
+			limit,
+			userId
+		);
+
+		reply.send(notifications);
+	},
+
+	listMessageNotifications: async (request, reply) => {
+		const { page, limit } = request.query;
+		const {
+			user: { id: userId },
+		} = request.user;
+		const notifications = await notificationModel.listMessageNotifications(
 			page,
 			limit,
 			userId
