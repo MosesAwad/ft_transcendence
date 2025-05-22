@@ -5,6 +5,51 @@ const socket = io("http://localhost:3000", {
 	withCredentials: true,
 });
 
+// Toast notification queue system
+const toastQueue = [];
+let isShowingToast = false;
+
+function createToastElement(username, message) {
+	const toast = document.createElement("div");
+	toast.className = "toast-notification";
+
+	const header = document.createElement("div");
+	header.className = "header";
+	header.textContent = username;
+
+	const messageDiv = document.createElement("div");
+	messageDiv.className = "message";
+	messageDiv.textContent = message;
+
+	toast.appendChild(header);
+	toast.appendChild(messageDiv);
+	document.body.appendChild(toast);
+
+	return toast;
+}
+
+async function showNextToast() {
+	if (isShowingToast || toastQueue.length === 0) return;
+
+	isShowingToast = true;
+	const { username, message } = toastQueue.shift();
+
+	const toast = createToastElement(username, message);
+
+	// Trigger reflow to ensure transition works
+	void toast.offsetWidth;
+	toast.classList.add("show");
+
+	await new Promise((resolve) => setTimeout(resolve, 2000));
+
+	toast.classList.remove("show");
+	await new Promise((resolve) => setTimeout(resolve, 300)); // Wait for fade out
+
+	toast.remove();
+	isShowingToast = false;
+	showNextToast(); // Show next toast if any
+}
+
 // =============================
 // 📦 DOM ELEMENTS
 // =============================
@@ -341,9 +386,22 @@ socket.on("newMessage", (message) => {
 
 // Added socket event listeners for notifications
 socket.on("messageReceivedInform", async (data) => {
-	// Instead of checking DOM, fetch latest notifications from backend
+	// Don't show toast if we're in the chat room
+	if (currentChatId && currentChatId.toString() === data.chatId.toString())
+		return;
+
+	// Add to queue using the directly provided username and actual message content
+	toastQueue.push({
+		username: data.username,
+		message: data.message, // Access the content property of the message object
+	});
+
+	// Try to show next toast
+	showNextToast();
+
+	// Rest of the existing notification logic for mailbox counter
 	const page = 1;
-	const limit = 5;
+	const limit = 50;
 	const res = await fetchWithAutoRefresh(
 		`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
 		{ credentials: "include" }
@@ -351,18 +409,15 @@ socket.on("messageReceivedInform", async (data) => {
 
 	if (res.ok) {
 		const notifications = await res.json();
-		// Update mailbox counter based on unique chats with unread messages
-		const unreadChats = new Set(
-			notifications.filter((n) => !n.is_read).map((n) => n.chat_id)
+		const uniqueSenders = new Set(
+			notifications.filter((n) => !n.is_read).map((n) => n.sender_id)
 		);
-		mailboxNotificationCount = unreadChats.size;
-		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
 
-		// Update notification display
+		mailboxNotificationCount = uniqueSenders.size;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
 		renderNotificationList(messageNotificationBox, notifications);
 	}
 
-	// Reload chats to update the order
 	debouncedReloadChats();
 });
 

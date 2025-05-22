@@ -1,5 +1,5 @@
 module.exports = (notificationModel, io, onlineUsers) => ({
-	notifyMessageReceived: async (senderUser, receiverUserId, chatId) => {
+	notifyMessageReceived: async (senderUser, receiverUserId, chatId, message) => {
 		const { id: senderId, username } = senderUser;
 
 		const targetSockets = onlineUsers.get(receiverUserId); // After successful friend request, check if receiver is online
@@ -10,23 +10,25 @@ module.exports = (notificationModel, io, onlineUsers) => ({
 				const socket = io.sockets.sockets.get(socketId);
 				if (socket && socket.rooms.has(chatId.toString())) {
 					// They're already in the chat room and saw your message in realtime — don't create or send notification
-					return ;
+					return;
 				}
 			}
 
-            // Emit socket notification if online but not in the chat
-            targetSockets.forEach((socketId) => {
-                io.to(socketId).emit("messageReceivedInform", {
-                    fromUserId: senderId,
-                    message: `${username} sent you a message!`,
-                });
-            });
+			// Emit socket notification if online but not in the chat
+			targetSockets.forEach((socketId) => {
+				io.to(socketId).emit("messageReceivedInform", {
+					fromUserId: senderId,
+					username,
+					message: message.slice(0, 100), // send only a snippet
+					chatId: chatId,
+				});
+			});
 		}
 
 		await notificationModel.createNotification(
 			senderId,
 			receiverUserId,
-            chatId,
+			chatId,
 			"message",
 			`${username} sent you a message!`,
 			false

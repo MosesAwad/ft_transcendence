@@ -62,7 +62,8 @@ module.exports = (chatModel, notificationModel, io, onlineUsers) => {
 			await chatNotificationService.notifyMessageReceived(
 				user,
 				receiverUserId,
-				chatId
+				chatId,
+				message.content
 			);
 			io.to(chatId.toString()).emit("newMessage", message);
 		},

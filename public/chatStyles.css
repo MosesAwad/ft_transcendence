@@ -273,3 +273,42 @@ body {
 	padding: 10px;
 	z-index: 1000;
 }
+
+.toast-notification {
+	position: fixed;
+	left: 20px;
+	top: 20px;
+	width: 240px;
+	background: #ffffff;
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	padding: 12px;
+	z-index: 10000;
+	opacity: 0;
+	transform: translateX(-20px);
+	transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+	pointer-events: none;
+}
+
+.toast-notification.show {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.toast-notification .header {
+	font-weight: bold;
+	margin-bottom: 6px;
+	font-size: 14px;
+	color: #1a1a1a;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.toast-notification .message {
+	font-size: 13px;
+	color: #666666;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
