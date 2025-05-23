@@ -63,14 +63,11 @@ const userSearchResults = document.getElementById("userSearchResults");
 
 // Added notification elements
 const bellBtn = document.getElementById("bellBtn");
-const notificationBox = document.getElementById("notifications");
+const generalNotificationBox = document.getElementById("generalNotifications");
 const logoutBtn = document.getElementById("logoutBtn");
 
 // Added mailbox notification elements
 const mailboxBtn = document.getElementById("mailboxBtn");
-
-// Separate notification boxes for general and message notifications
-const generalNotificationBox = document.getElementById("generalNotifications");
 const messageNotificationBox = document.getElementById("messageNotifications");
 
 // =============================
@@ -85,16 +82,19 @@ let mailboxNotificationCount = 0;
 // 📢 NOTIFICATION HANDLING
 // =============================
 function addNotification(message) {
-	const placeholder = notificationBox.querySelector("em");
+	const placeholder = generalNotificationBox.querySelector("em");
 	if (placeholder) placeholder.remove();
 
 	const div = document.createElement("div");
 	div.classList.add("notification");
 	div.textContent = message;
-	if (notificationBox.firstChild) {
-		notificationBox.insertBefore(div, notificationBox.firstChild);
+	if (generalNotificationBox.firstChild) {
+		generalNotificationBox.insertBefore(
+			div,
+			generalNotificationBox.firstChild
+		);
 	} else {
-		notificationBox.appendChild(div);
+		generalNotificationBox.appendChild(div);
 	}
 
 	notificationCount++;
@@ -422,6 +422,7 @@ socket.on("messageReceivedInform", async (data) => {
 });
 
 socket.on("friendRequestInform", (data) => {
+	// Use notifications for general notifications (friend requests)
 	const placeholder = generalNotificationBox.querySelector("em");
 	if (placeholder) placeholder.remove();
 
@@ -497,8 +498,8 @@ async function initializeNotificationCounter() {
 }
 
 bellBtn.addEventListener("click", async () => {
-	const visible = notificationBox.style.display === "block";
-	notificationBox.style.display = visible ? "none" : "block";
+	const visible = generalNotificationBox.style.display === "block";
+	generalNotificationBox.style.display = visible ? "none" : "block";
 
 	if (!visible) {
 		try {
@@ -535,7 +536,7 @@ bellBtn.addEventListener("click", async () => {
 	}
 
 	const notificationListData = await notificationListRes.json();
-	renderNotificationList(notificationBox, notificationListData);
+	renderNotificationList(generalNotificationBox, notificationListData);
 });
 
 // Function to handle mailbox notifications
@@ -565,8 +566,8 @@ async function initializeMailboxNotificationCounter() {
 }
 
 mailboxBtn.addEventListener("click", async () => {
-	const visible = notificationBox.style.display === "block";
-	notificationBox.style.display = visible ? "none" : "block";
+	const visible = messageNotificationBox.style.display === "block";
+	messageNotificationBox.style.display = visible ? "none" : "block";
 
 	if (!visible) {
 		try {
@@ -603,7 +604,7 @@ mailboxBtn.addEventListener("click", async () => {
 	}
 
 	const mailboxNotificationListData = await mailboxNotificationListRes.json();
-	renderNotificationList(notificationBox, mailboxNotificationListData);
+	renderNotificationList(messageNotificationBox, mailboxNotificationListData);
 });
 
 // =============================

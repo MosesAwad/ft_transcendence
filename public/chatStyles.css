@@ -208,7 +208,7 @@ body {
 	visibility: visible;
 }
 
-#notifications {
+#generalNotifications {
 	position: absolute;
 	top: 50px;
 	right: 1rem;
