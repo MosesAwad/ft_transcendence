@@ -64,11 +64,36 @@
 
 			.notification-bell {
 				position: absolute;
-				top: 1rem;
-				right: 1rem;
 				cursor: pointer;
+				font-size: 1.5rem;
 			}
-			#notifications {
+			#bellBtn {
+				right: 4rem;
+				top: 1rem;
+			}
+
+			#mailboxBtn {
+				right: 1rem;
+				top: 1rem;
+			}
+
+			#generalNotifications {
+				position: absolute;
+				top: 3rem;
+				right: 4rem;
+				width: 300px;
+				max-height: 400px;
+				overflow-y: auto;
+				border: 1px solid #ccc;
+				background: white;
+				padding: 1rem;
+				border-radius: 5px;
+				display: none;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+				z-index: 999;
+			}
+
+			#messageNotifications {
 				position: absolute;
 				top: 3rem;
 				right: 1rem;
@@ -80,19 +105,25 @@
 				padding: 1rem;
 				border-radius: 5px;
 				display: none;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+				z-index: 999;
 			}
+
 			.notification {
 				padding: 0.5rem;
 				border-bottom: 1px solid #eee;
 			}
+
 			.notification:last-child {
 				border-bottom: none;
 			}
-			#bellBtn::after {
+
+			#bellBtn::after,
+			#mailboxBtn::after {
 				content: attr(data-count);
 				position: absolute;
-				top: 0;
-				right: 0;
+				top: -5px;
+				right: -5px;
 				background: red;
 				color: white;
 				border-radius: 50%;
@@ -101,14 +132,15 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				font-size: 0.8rem;
-				transform: translate(50%, -50%);
+				font-size: 0.75rem;
 				visibility: hidden;
 			}
 
-			#bellBtn[data-count]:not([data-count="0"])::after {
+			#bellBtn[data-count]:not([data-count="0"])::after,
+			#mailboxBtn[data-count]:not([data-count="0"])::after {
 				visibility: visible;
 			}
+
 			/* Search dropdown styling */
 			#userSearchResults {
 				max-height: 200px;
@@ -127,6 +159,46 @@
 			}
 			#userSearchResults li:hover {
 				background-color: #f1f1f1;
+			}
+
+			/* Toast Notification Styles */
+			.toast-notification {
+				position: fixed;
+				left: 20px;
+				top: 20px;
+				width: 240px;
+				background: #ffffff;
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				padding: 12px;
+				z-index: 10000;
+				opacity: 0;
+				transform: translateX(-20px);
+				transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+				pointer-events: none;
+			}
+
+			.toast-notification.show {
+				opacity: 1;
+				transform: translateX(0);
+			}
+
+			.toast-notification .header {
+				font-weight: bold;
+				margin-bottom: 6px;
+				font-size: 14px;
+				color: #1a1a1a;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+
+			.toast-notification .message {
+				font-size: 13px;
+				color: #666666;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 		</style>
 	</head>
@@ -170,8 +242,12 @@
 			</button>
 
 			<div class="notification-bell" id="bellBtn">🔔</div>
-			<div id="notifications">
+			<div class="notification-bell" id="mailboxBtn">📬</div>
+			<div id="generalNotifications">
 				<em>No notifications yet.</em>
+			</div>
+			<div id="messageNotifications" class="notification-box">
+				<em>No message notifications yet.</em>
 			</div>
 		</div>
 

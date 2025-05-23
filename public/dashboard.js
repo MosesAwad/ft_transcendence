@@ -1,58 +1,308 @@
+// Toast notification queue system
+const toastQueue = [];
+let isShowingToast = false;
+
+function createToastElement(username, message) {
+	const toast = document.createElement("div");
+	toast.className = "toast-notification";
+
+	const header = document.createElement("div");
+	header.className = "header";
+	header.textContent = username;
+
+	const messageDiv = document.createElement("div");
+	messageDiv.className = "message";
+	messageDiv.textContent = message;
+
+	toast.appendChild(header);
+	toast.appendChild(messageDiv);
+	document.body.appendChild(toast);
+
+	return toast;
+}
+
+async function showNextToast() {
+	if (isShowingToast || toastQueue.length === 0) return;
+
+	isShowingToast = true;
+	const { username, message } = toastQueue.shift();
+
+	const toast = createToastElement(username, message);
+
+	// Trigger reflow to ensure transition works
+	void toast.offsetWidth;
+	toast.classList.add("show");
+
+	await new Promise((resolve) => setTimeout(resolve, 2000));
+
+	toast.classList.remove("show");
+	await new Promise((resolve) => setTimeout(resolve, 300)); // Wait for fade out
+
+	toast.remove();
+	isShowingToast = false;
+	showNextToast(); // Show next toast if any
+}
+
+// DOM Elements
 const userSearchInput = document.getElementById("userSearch");
 const userSearchResults = document.getElementById("userSearchResults");
 const logoutBtn = document.getElementById("logoutBtn");
 const showUserBtn = document.getElementById("showUserBtn");
 const bellBtn = document.getElementById("bellBtn");
-const notificationBox = document.getElementById("notifications");
-const sendBtn = document.getElementById("sendFriendRequestBtn");
-const emailInput = document.getElementById("friendEmail");
+const mailboxBtn = document.getElementById("mailboxBtn");
+const generalNotificationBox = document.getElementById("generalNotifications");
+const messageNotificationBox = document.getElementById("messageNotifications");
 const incomingList = document.getElementById("incomingRequests");
 const outgoingList = document.getElementById("outgoingRequests");
 const friendsList = document.getElementById("friendsList");
 
 const deviceId = localStorage.getItem("deviceId");
 
+// Notification state
 let notificationCount = 0;
+let mailboxNotificationCount = 0;
 
-/* NOTIFICATION SECTION */
-
+// Socket connection
 console.log("Trying to connect to:", window.location.hostname);
 const socket = io("http://localhost:3000", {
 	withCredentials: true,
 });
 
-function addNotification(message) {
-	const placeholder = notificationBox.querySelector("em");
+function addNotification(message, type = "general") {
+	const box =
+		type === "message" ? messageNotificationBox : generalNotificationBox;
+	const placeholder = box.querySelector("em");
 	if (placeholder) placeholder.remove();
 
 	const div = document.createElement("div");
 	div.classList.add("notification");
 	div.textContent = message;
-	if (notificationBox.firstChild) {
-		notificationBox.insertBefore(div, notificationBox.firstChild);
+	if (box.firstChild) {
+		box.insertBefore(div, box.firstChild);
 	} else {
-		notificationBox.appendChild(div);
+		box.appendChild(div);
 	}
 
-	notificationCount++;
-	bellBtn.setAttribute("data-count", notificationCount);
+	if (type === "message") {
+		mailboxNotificationCount++;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
+	} else {
+		notificationCount++;
+		bellBtn.setAttribute("data-count", notificationCount);
+	}
 }
 
-socket.on("messageReceivedInform", (data) => {
-	addNotification(data.message);
+// Socket event listeners
+socket.on("messageReceivedInform", async (data) => {
+	// Add to queue using the directly provided username and message content
+	toastQueue.push({
+		username: data.username,
+		message: data.message.slice(0, 100), // Only show first 100 chars in toast
+	});
+
+	// Try to show next toast
+	showNextToast();
+
+	// Add to notification box and update counter
+	addNotification(data.message, "message");
+
+	// Update mailbox counter with latest count
+	const page = 1;
+	const limit = 50;
+	const res = await fetchWithAutoRefresh(
+		`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+		{ credentials: "include" }
+	);
+
+	if (res.ok) {
+		const notifications = await res.json();
+		const uniqueSenders = new Set(
+			notifications.filter((n) => !n.is_read).map((n) => n.sender_id)
+		);
+
+		mailboxNotificationCount = uniqueSenders.size;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
+		renderNotificationList(messageNotificationBox, notifications);
+	}
 });
 
 socket.on("friendRequestInform", (data) => {
-	addNotification(data.message);
+	addNotification(data.message, "general");
 	loadFriendData();
 });
 
 socket.on("friendRequestAccept", (data) => {
-	addNotification(data.message);
+	addNotification(data.message, "general");
 	loadFriendData();
 });
 
-/* AUTH */
+// Initialize notification counters
+async function initializeNotificationCounter() {
+	try {
+		const page = 1;
+		const limit = 5;
+		const res = await fetchWithAutoRefresh(
+			`${baseURL}/notifications/others?page=${page}&limit=${limit}`,
+			{ credentials: "include" }
+		);
+		if (!res.ok) throw new Error("Failed to fetch notifications");
+
+		const notifications = await res.json();
+		notificationCount = notifications.filter(
+			(n) => n.is_opened === 0
+		).length;
+		bellBtn.setAttribute("data-count", notificationCount);
+	} catch (error) {
+		console.error("Error initializing notification counter:", error);
+	}
+}
+
+async function initializeMailboxNotificationCounter() {
+	try {
+		const page = 1;
+		const limit = 5;
+		const res = await fetchWithAutoRefresh(
+			`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+			{ credentials: "include" }
+		);
+		if (!res.ok) throw new Error("Failed to fetch mailbox notifications");
+
+		const notifications = await res.json();
+		mailboxNotificationCount = notifications.filter(
+			(n) => n.is_read === 0
+		).length;
+		mailboxBtn.setAttribute("data-count", mailboxNotificationCount);
+	} catch (error) {
+		console.error(
+			"Error initializing mailbox notification counter:",
+			error
+		);
+	}
+}
+
+// Notification click handlers
+bellBtn.addEventListener("click", async () => {
+	const visible = generalNotificationBox.style.display === "block";
+	generalNotificationBox.style.display = visible ? "none" : "block";
+	messageNotificationBox.style.display = "none"; // Hide other box
+
+	if (!visible) {
+		try {
+			const res = await fetchWithAutoRefresh(
+				`${baseURL}/notifications/others`,
+				{
+					method: "PATCH",
+					credentials: "include",
+				}
+			);
+			if (!res.ok)
+				throw new Error("Failed to mark notifications as opened");
+			notificationCount = 0;
+			bellBtn.setAttribute("data-count", "0");
+		} catch (error) {
+			console.error("Error marking notifications as opened:", error);
+		}
+	}
+
+	const page = 1;
+	const limit = 5;
+	const notificationListRes = await fetchWithAutoRefresh(
+		`${baseURL}/notifications/others?page=${page}&limit=${limit}`,
+		{ credentials: "include" }
+	);
+	if (!notificationListRes.ok) return;
+
+	const notificationListData = await notificationListRes.json();
+	renderNotificationList(generalNotificationBox, notificationListData);
+});
+
+mailboxBtn.addEventListener("click", async () => {
+	const visible = messageNotificationBox.style.display === "block";
+	messageNotificationBox.style.display = visible ? "none" : "block";
+	generalNotificationBox.style.display = "none"; // Hide other box
+
+	const page = 1;
+	const limit = 5;
+	const mailboxNotificationListRes = await fetchWithAutoRefresh(
+		`${baseURL}/notifications/messages?page=${page}&limit=${limit}`,
+		{ credentials: "include" }
+	);
+	if (!mailboxNotificationListRes.ok) return;
+
+	const mailboxNotificationListData = await mailboxNotificationListRes.json();
+	renderNotificationList(messageNotificationBox, mailboxNotificationListData);
+});
+
+// Helper function to render notification lists
+function renderNotificationList(listEl, data) {
+	listEl.innerHTML = "";
+	if (data.length === 0) {
+		const li = document.createElement("li");
+		li.textContent =
+			listEl.id === "messageNotifications"
+				? "No new messages."
+				: "No notifications.";
+		listEl.appendChild(li);
+		return;
+	}
+
+	data.forEach((item) => {
+		const li = document.createElement("li");
+		li.textContent = item.message;
+		li.style.backgroundColor = item.is_read ? "white" : "lightblue";
+		li.style.display = "block";
+		li.style.width = "100%";
+		li.style.padding = "0.75rem 1rem";
+		li.style.marginBottom = "0.5rem";
+		li.style.border = "1px solid #ccc";
+		li.style.borderRadius = "0.5rem";
+		li.style.cursor = "pointer";
+		li.style.transition = "background-color 0.3s ease";
+
+		li.addEventListener("click", async () => {
+			if (item.type === "message" && item.chat_id) {
+				await fetchWithAutoRefresh(
+					`${baseURL}/notifications/messages/by-chat/${item.chat_id}`,
+					{
+						method: "PATCH",
+						credentials: "include",
+					}
+				);
+
+				window.location.href = `chat/chat.html?chatId=${item.chat_id}`;
+				return;
+			}
+
+			if (item.is_read) return;
+
+			try {
+				await fetchWithAutoRefresh(
+					`${baseURL}/notifications/others/${item.id}`,
+					{
+						method: "PATCH",
+						credentials: "include",
+					}
+				);
+				li.style.backgroundColor = "white";
+				item.is_read = true;
+			} catch (error) {
+				console.error("Error marking notification as read:", error);
+			}
+		});
+
+		li.addEventListener("mouseover", () => {
+			li.style.backgroundColor = item.is_read ? "#f5f5f5" : "#add8e6";
+		});
+
+		li.addEventListener("mouseout", () => {
+			li.style.backgroundColor = item.is_read ? "white" : "lightblue";
+		});
+
+		listEl.appendChild(li);
+	});
+}
+
+// AUTH
 
 async function checkAuthentication() {
 	const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
@@ -235,68 +485,6 @@ async function loadFriendData() {
 }
 
 /*`EVENT LISTENERS */
-bellBtn.addEventListener("click", async () => {
-	const visible = notificationBox.style.display === "block";
-	notificationBox.style.display = visible ? "none" : "block";
-
-	let page = 1;
-	const limit = 5;
-	const notificationListRes = await fetchWithAutoRefresh(
-		`${baseURL}/notifications?page=${page}&limit=${limit}`,
-		{
-			credentials: "include",
-		}
-	);
-	if (!notificationListRes.ok) {
-		return;
-	}
-	const notificationListData = await notificationListRes.json();
-	renderList(notificationBox, notificationListData, (item) => {
-		const li = document.createElement("li");
-		li.textContent = item.message;
-		li.style.backgroundColor = item.is_read ? "white" : "lightblue";
-		li.style.display = "block";
-		li.style.width = "100%";
-		li.style.padding = "0.75rem 1rem";
-		li.style.marginBottom = "0.5rem";
-		li.style.border = "1px solid #ccc";
-		li.style.borderRadius = "0.5rem";
-		li.style.cursor = "pointer";
-		li.style.transition = "background-color 0.3s ease";
-
-		li.addEventListener("click", async () => {
-			if (item.is_read) return; // Already read, do nothing
-
-			// Send PATCH request
-			await fetchWithAutoRefresh(`${baseURL}/notifications/${item.id}`, {
-				method: "PATCH",
-				credentials: "include",
-			});
-
-			if (item.message.includes("sent you a message!") && item.chat_id) {
-				window.location.href = `http://localhost:3000/chat.html?chatId=${item.chat_id}`;
-			}
-
-			// Update UI to fix it live without the user having to close the notification box and re-open
-			li.style.backgroundColor = "white";
-			item.is_read = 1;
-		});
-		li.addEventListener("mouseover", () => {
-			li.style.backgroundColor = item.is_read ? "#f5f5f5" : "#add8e6"; // light gray or stay light blue
-		});
-		li.addEventListener("mouseout", () => {
-			li.style.backgroundColor = item.is_read ? "white" : "lightblue";
-		});
-
-		return li;
-	});
-
-	if (!visible) {
-		notificationCount = 0;
-		bellBtn.setAttribute("data-count", "0");
-	}
-});
-
 userSearchInput.addEventListener("input", async () => {
 	const query = userSearchInput.value.trim();
 
@@ -363,5 +551,7 @@ checkAuthentication().then((isAuthenticated) => {
 	document.body.style.visibility = "visible";
 	document.body.style.opacity = "1";
 
+	initializeNotificationCounter();
+	initializeMailboxNotificationCounter();
 	loadFriendData();
 });
