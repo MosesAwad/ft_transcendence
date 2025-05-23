@@ -44,6 +44,24 @@
 				width: 100%;
 				box-sizing: border-box;
 			}
+
+			/* Action buttons in main section */
+			.main button {
+				display: inline-block;
+				width: auto;
+				margin-right: 1rem;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				transition: background-color 0.2s;
+			}
+
+			.main button:hover {
+				background-color: #0056b3;
+			}
+
 			.notification-bell {
 				position: absolute;
 				top: 1rem;
@@ -147,6 +165,9 @@
 			<h1>Welcome to the Dashboard 👋</h1>
 			<button id="showUserBtn">Show Current User</button>
 			<button id="logoutBtn">Logout</button>
+			<button onclick="window.location.href='chat/chat.html'">
+				Go to Chat
+			</button>
 
 			<div class="notification-bell" id="bellBtn">🔔</div>
 			<div id="notifications">

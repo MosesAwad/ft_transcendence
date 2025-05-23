@@ -614,7 +614,12 @@ function renderNotificationList(listEl, data) {
 	listEl.innerHTML = "";
 	if (data.length === 0) {
 		const li = document.createElement("li");
-		li.textContent = "No notifications.";
+		if (listEl.id === "messageNotifications") {
+			li.textContent = "No new messages.";
+		}
+		else {
+			li.textContent = "No notifications.";
+		}
 		listEl.appendChild(li);
 		return;
 	}
