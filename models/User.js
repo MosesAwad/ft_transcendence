@@ -77,6 +77,55 @@ class User {
 
 		return user;
 	}
+
+	async listAllBlocks(userId) {
+		const blocks = await this.db("blocks")
+			.select("blocked_user_id")
+			.where({ user_id: userId });
+
+		return blocks;
+	}
+
+	async blockUser(userId, blockRecipientId) {
+		if (userId === blockRecipientId) {
+			throw new CustomError.BadRequestError(
+				"Users are unable to block themselves!"
+			);
+		}
+		const blockedRecipient = await this.db("users")
+			.where({ id: blockRecipientId })
+			.first();
+		if (!blockedRecipient) {
+			throw new CustomError.NotFoundError(
+				"Invalid block recipient id, unable to proceed with block request"
+			);
+		}
+
+		const block = await this.db("blocks")
+			.insert({
+				blocker_id: userId,
+				blocked_id: blockRecipientId,
+			})
+			.returning("*");
+
+		return block;
+	}
+
+	async unblockUser(userId, blockId) {
+		const block = await this.db("blocks")
+			.where({ id: blockId, blocker_id: userId })
+			.first();
+		if (!block) {
+			throw new CustomError.NotFoundError(
+				`Block with id of ${blockId} not found!`
+			);
+		}
+
+		const unblockedUser = block.blocked_id
+		await this.db("blocks").where({ id: blockId }).del();
+
+		return unblockedUser;
+	}
 }
 
 module.exports = User;

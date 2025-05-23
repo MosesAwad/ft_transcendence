@@ -41,7 +41,36 @@ const listSingleUserOpts = {
 	},
 };
 
-module.exports = { listSingleUserOpts, listAllUsersOpts };
+const createBlockOpts = {
+	schema: {
+		body: {
+			type: "object",
+			required: ["blockRecipientId"],
+			properties: {
+				blockRecipientId: { type: "number" },
+			},
+		},
+	},
+};
+
+const deleteBlockOpts = {
+	schema: {
+		params: {
+			type: "object",
+			required: ["blockId"],
+			properties: {
+				blockId: { type: "number" },
+			},
+		},
+	},
+};
+
+module.exports = {
+	listSingleUserOpts,
+	listAllUsersOpts,
+	createBlockOpts,
+	deleteBlockOpts,
+};
 
 /*
 	You can add more later, besides search, perhaps like (tournament instead of search query to list all players participating). I left 
