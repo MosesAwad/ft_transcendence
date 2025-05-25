@@ -7,8 +7,13 @@ const {
 
 async function userRoutes(fastify, options) {
 	const { userModel } = options;
-	const { listAllUsers, listSingleUser } =
-		require("../controllers/userController")(userModel);
+	const {
+		listAllUsers,
+		listSingleUser,
+		listAllBlocks,
+		blockUser,
+		unblockUser,
+	} = require("../controllers/userController")(userModel);
 	fastify.get(
 		"/showUser",
 		{ preHandler: fastify.authenticate },
@@ -26,18 +31,14 @@ async function userRoutes(fastify, options) {
 		{ preHandler: fastify.authenticate, schema: listAllUsersOpts.schema },
 		listAllUsers
 	);
-	fastify.get(
-		"/blocks",
-		{ preHandler: fastify.authenticate },
-		async (request, reply) => {}
-	);
+	fastify.get("/blocks", { preHandler: fastify.authenticate }, listAllBlocks);
 	fastify.post(
 		"/blocks",
 		{
 			preHandler: fastify.authenticate,
 			schema: createBlockOpts.schema,
 		},
-		async (request, reply) => {}
+		blockUser
 	);
 	fastify.delete(
 		"/blocks/:blockId",
@@ -45,7 +46,7 @@ async function userRoutes(fastify, options) {
 			preHandler: fastify.authenticate,
 			schema: deleteBlockOpts.schema,
 		},
-		async (request, reply) => {}
+		unblockUser
 	);
 }
 

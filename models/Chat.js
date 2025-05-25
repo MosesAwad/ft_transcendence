@@ -90,12 +90,31 @@ class Chat {
 			);
 		}
 
+		const receiverIsBlocked = await this.db("blocks")
+			.where({
+				blocker_id: senderId,
+				blocked_id: chatParticipantIds.find((id) => id !== senderId),
+			})
+			.first();
+		if (receiverIsBlocked) {
+			throw new CustomError.UnauthorizedError(
+				"Access Denied! You have blocked this user"
+			);
+		}
+		const isSenderBlocked = await this.db("blocks")
+			.where({
+				blocker_id: chatParticipantIds.find((id) => id !== senderId),
+				blocked_id: senderId,
+			})
+			.first();
+
 		// Add the message to the database
 		const [message] = await this.db("messages")
 			.insert({
 				chat_id: chatId,
 				sender_id: senderId,
 				content: content,
+				blocks_active: isSenderBlocked ? true : false,
 			})
 			.returning("*");
 
@@ -109,7 +128,7 @@ class Chat {
 		// Obtain the receiver's id for the chat notification service to use
 		const receiverUserId = chatParticipantIds.find((id) => id !== senderId);
 
-		return { message, receiverUserId };
+		return { message, receiverUserId, isSenderBlocked };
 	}
 
 	async getMessages(userId, chatId) {
@@ -125,6 +144,14 @@ class Chat {
 		}
 		const messages = await this.db("messages")
 			.where({ chat_id: chatId })
+			.andWhere(function () {
+				this.where("blocks_active", false).orWhere(function () {
+					this.where("blocks_active", true).andWhere(
+						"sender_id",
+						userId
+					);
+				});
+			})
 			.orderBy("created_at", "asc");
 		return messages;
 	}

@@ -50,22 +50,31 @@ module.exports = (chatModel, notificationModel, io, onlineUsers) => {
 			const { id: senderId } = user;
 			const { chatId, content } = request.body;
 
-			const { message, receiverUserId } = await chatModel.createMessage(
-				senderId,
-				chatId,
-				content
-			);
+			const { message, receiverUserId, isSenderBlocked } =
+				await chatModel.createMessage(senderId, chatId, content);
 
 			reply.send({
 				msg: `Message with id ${message.id} was successfuly sent`,
 			});
-			await chatNotificationService.notifyMessageReceived(
-				user,
-				receiverUserId,
-				chatId,
-				message.content
-			);
-			io.to(chatId.toString()).emit("newMessage", message);
+			if (isSenderBlocked) {
+				const senderSocketIds = onlineUsers.get(senderId);
+				if (senderSocketIds) {
+					// Sender is blocked - only emit the message to the chat room without notifying the receiver
+					for (const socketId of senderSocketIds) {
+						io.to(socketId).emit("newMessage", message);
+					}
+				}
+			} else {
+				// No one's blocked — notify the receiver that they received a new message
+				await chatNotificationService.notifyMessageReceived(
+					user,
+					receiverUserId,
+					chatId,
+					message.content
+				);
+				// Emit the message to the chat room
+				io.to(chatId.toString()).emit("newMessage", message);
+			}
 		},
 
 		getMessages: async (request, reply) => {
