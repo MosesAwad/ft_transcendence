@@ -112,16 +112,19 @@ class User {
 	}
 
 	async unblockUser(userId, blockId) {
-		const block = await this.db("blocks")
-			.where({ id: blockId, blocker_id: userId })
-			.first();
+		const block = await this.db("blocks").where({ id: blockId }).first();
 		if (!block) {
 			throw new CustomError.NotFoundError(
 				`Block with id of ${blockId} not found!`
 			);
 		}
+		if (block.blocker_id !== userId) {
+			throw new CustomError.UnauthorizedError(
+				"You are not authorized to perform this unblock procedure!"
+			);
+		}
 
-		const unblockedUser = block.blocked_id
+		const unblockedUser = block.blocked_id;
 		await this.db("blocks").where({ id: blockId }).del();
 
 		return unblockedUser;
