@@ -60,11 +60,21 @@ async function loadProfileData(userId) {
 			throw new Error("Failed to fetch incoming requests");
 		const incomingRequests = await incomingReqRes.json();
 
+		// Check if user is blocked
+		const blockedUsersRes = await fetchWithAutoRefresh(
+			`${baseURL}/users/blocks`,
+			{ credentials: "include" }
+		);
+		if (!blockedUsersRes.ok)
+			throw new Error("Failed to fetch blocked users");
+		const blockedUsers = await blockedUsersRes.json();
+
 		updateFriendButton(
 			userId,
 			friendships,
 			pendingRequests,
-			incomingRequests
+			incomingRequests,
+			blockedUsers
 		);
 	} catch (error) {
 		console.error("Error:", error);
@@ -75,12 +85,13 @@ function updateFriendButton(
 	userId,
 	friendships,
 	pendingRequests,
-	incomingRequests
+	incomingRequests,
+	blockedUsers
 ) {
-	const btnContainer = document.querySelector(".button-container"); // Change this line
-	btnContainer.innerHTML = ""; // Clear existing buttons
+	const btnContainer = document.querySelector(".button-container");
+	btnContainer.innerHTML = "";
 
-	// Check if there's an incoming request from this user
+	// First handle friend-related buttons
 	const incomingRequest = incomingRequests.find(
 		(r) => r.senderId === parseInt(userId)
 	);
@@ -119,57 +130,99 @@ function updateFriendButton(
 
 		btnContainer.appendChild(acceptBtn);
 		btnContainer.appendChild(rejectBtn);
-		return;
-	}
-
-	const btn = document.createElement("button");
-	btn.id = "friendActionBtn";
-
-	const friendship = friendships.find((f) => f.userId === parseInt(userId));
-	if (friendship) {
-		btn.textContent = "Remove Friend";
-		btn.className = "remove-friend";
-		btn.dataset.friendshipId = friendship.friendshipId;
 	} else {
-		const pendingRequest = pendingRequests.find(
-			(r) => r.recipientId === parseInt(userId)
-		);
-		if (pendingRequest) {
-			btn.textContent = "Request Sent";
-			btn.className = "request-sent";
-			btn.disabled = true;
-		} else {
-			btn.textContent = "Send Friend Request";
-			btn.className = "";
-		}
-	}
+		const btn = document.createElement("button");
+		btn.id = "friendActionBtn";
 
-	btn.addEventListener("click", async (e) => {
-		const isFriend = e.target.classList.contains("remove-friend");
-		try {
-			if (isFriend) {
+		const friendship = friendships.find(
+			(f) => f.userId === parseInt(userId)
+		);
+		if (friendship) {
+			btn.textContent = "Remove Friend";
+			btn.className = "remove-friend";
+			btn.dataset.friendshipId = friendship.friendshipId;
+
+			btn.addEventListener("click", async () => {
 				await fetchWithAutoRefresh(
-					`${baseURL}/friendships/${e.target.dataset.friendshipId}`,
+					`${baseURL}/friendships/${friendship.friendshipId}`,
 					{
 						method: "DELETE",
 						credentials: "include",
 					}
 				);
+				loadProfileData(userId);
+			});
+		} else {
+			const pendingRequest = pendingRequests.find(
+				(r) => r.recipientId === parseInt(userId)
+			);
+			if (pendingRequest) {
+				btn.textContent = "Cancel Request";
+				btn.className = "request-sent";
+				btn.addEventListener("click", async () => {
+					await fetchWithAutoRefresh(
+						`${baseURL}/friendships/${pendingRequest.friendshipId}`,
+						{
+							method: "DELETE",
+							credentials: "include",
+						}
+					);
+					loadProfileData(userId);
+				});
 			} else {
-				await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({ friendId: userId }),
+				btn.textContent = "Send Friend Request";
+				btn.className = "send-request";
+				btn.addEventListener("click", async () => {
+					await fetchWithAutoRefresh(`${baseURL}/friendships`, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({ friendId: userId }),
+					});
+					loadProfileData(userId);
 				});
 			}
-			loadProfileData(userId);
-		} catch (error) {
-			console.error("Error:", error);
 		}
-	});
+		btnContainer.appendChild(btn);
+	}
 
-	btnContainer.appendChild(btn);
+	// Add block/unblock button
+	const blockBtn = document.createElement("button");
+	const isBlocked = blockedUsers.find((b) => b.userId === parseInt(userId));
+
+	if (isBlocked) {
+		blockBtn.innerHTML = "🔓 Unblock User";
+		blockBtn.className = "unblock-user";
+		blockBtn.addEventListener("click", async () => {
+			await fetchWithAutoRefresh(
+				`${baseURL}/users/blocks/${isBlocked.id}`,
+				{
+					method: "DELETE",
+					credentials: "include",
+				}
+			);
+			loadProfileData(userId);
+		});
+	} else {
+		blockBtn.innerHTML = "🚫 Block User";
+		blockBtn.className = "block-user";
+		blockBtn.addEventListener("click", async () => {
+			await fetchWithAutoRefresh(`${baseURL}/users/blocks`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ blockRecipientId: parseInt(userId) }),
+			});
+			loadProfileData(userId);
+		});
+	}
+
+	// Create a spacer div for visual separation
+	const spacer = document.createElement("div");
+	spacer.style.height = "1rem";
+	btnContainer.appendChild(spacer);
+
+	btnContainer.appendChild(blockBtn);
 }
 
 socket.on("friendRequestInform", () => {

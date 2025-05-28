@@ -338,24 +338,24 @@ function makeButton(text, onClick) {
 
 // ========= Real-time Search Section =========
 const renderSearchResults = (data) => {
-    userSearchResults.innerHTML = "";
-    if (data.length === 0) {
-        userSearchResults.style.display = "none";
-        return;
-    }
+	userSearchResults.innerHTML = "";
+	if (data.length === 0) {
+		userSearchResults.style.display = "none";
+		return;
+	}
 
-    data.forEach((user) => {
-        const li = document.createElement("li");
-        li.textContent = user.username;
-        li.addEventListener("click", () => {
-            window.location.href = `profile.html?userId=${user.id}`; // Redirect to profile page
-            userSearchInput.value = ""; // Clear search input
-            userSearchResults.style.display = "none"; // Hide dropdown
-        });
-        userSearchResults.appendChild(li);
-    });
+	data.forEach((user) => {
+		const li = document.createElement("li");
+		li.textContent = user.username;
+		li.addEventListener("click", () => {
+			window.location.href = `profile.html?userId=${user.id}`; // Redirect to profile page
+			userSearchInput.value = ""; // Clear search input
+			userSearchResults.style.display = "none"; // Hide dropdown
+		});
+		userSearchResults.appendChild(li);
+	});
 
-    userSearchResults.style.display = "block";
+	userSearchResults.style.display = "block";
 };
 
 /* INITIALIZERS */
@@ -470,29 +470,32 @@ async function loadFriendData() {
 
 // Add after loadFriendData function
 async function loadBlockedUsers() {
-    const blockedUsersRes = await fetchWithAutoRefresh(`${baseURL}/users/blocks`, {
-        credentials: "include",
-    });
-    if (!blockedUsersRes.ok) {
-        return;
-    }
-    const blockedUsersData = await blockedUsersRes.json();
+	const blockedUsersRes = await fetchWithAutoRefresh(
+		`${baseURL}/users/blocks`,
+		{
+			credentials: "include",
+		}
+	);
+	if (!blockedUsersRes.ok) {
+		return;
+	}
+	const blockedUsersData = await blockedUsersRes.json();
 
-    renderList(blockedList, blockedUsersData, (item) => {
-        const li = document.createElement("li");
-        li.textContent = item.username;
-        
-        const unblockBtn = makeButton("Unblock", async () => {
-            await fetchWithAutoRefresh(`${baseURL}/users/blocks/${item.blocked_user_id}`, {
-                method: "DELETE",
-                credentials: "include",
-            });
-            loadBlockedUsers(); // Only reload blocked users list
-        });
-        
-        li.appendChild(unblockBtn);
-        return li;
-    });
+	renderList(blockedList, blockedUsersData, (item) => {
+		const li = document.createElement("li");
+		li.textContent = item.username;
+
+		const unblockBtn = makeButton("Unblock", async () => {
+			await fetchWithAutoRefresh(`${baseURL}/users/blocks/${item.id}`, {
+				method: "DELETE",
+				credentials: "include",
+			});
+			loadBlockedUsers(); // Only reload blocked users list
+		});
+
+		li.appendChild(unblockBtn);
+		return li;
+	});
 }
 
 /*`EVENT LISTENERS */

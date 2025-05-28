@@ -80,8 +80,13 @@ class User {
 
 	async listAllBlocks(userId) {
 		const blocks = await this.db("blocks")
-			.select("blocked_user_id")
-			.where({ user_id: userId });
+			.join("users", "blocks.blocked_id", "users.id")
+			.select(
+				"blocks.id",
+				"blocks.blocked_id as userId",
+				"users.username"
+			)
+			.where({ blocker_id: userId });
 
 		return blocks;
 	}

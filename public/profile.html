@@ -42,8 +42,12 @@
 			}
 			.button-container {
 				display: flex;
+				flex-direction: column;
 				gap: 1rem;
-				justify-content: center;
+				align-items: center;
+				width: 100%;
+				max-width: 200px;
+				margin: 0 auto;
 			}
 			button {
 				padding: 0.5rem 1rem;
@@ -54,6 +58,11 @@
 				background-color: #f1f1f1;
 				color: #333;
 				transition: all 0.2s ease;
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.5rem;
 			}
 			button:hover {
 				opacity: 0.9;
@@ -62,8 +71,12 @@
 				background-color: #28a745;
 				color: white;
 			}
+			.send-request {
+				background-color: #28a745;
+				color: white;
+			}
 			.reject-request {
-				background-color: #dc3545;
+				background-color: #ff6b6b; /* Lighter red for reject */
 				color: white;
 			}
 			.remove-friend {
@@ -71,6 +84,14 @@
 				color: white;
 			}
 			.request-sent {
+				background-color: #6c757d;
+				color: white;
+			}
+			.block-user {
+				background-color: #dc3545; /* Keeping block as the darker red */
+				color: white;
+			}
+			.unblock-user {
 				background-color: #6c757d;
 				color: white;
 			}
@@ -86,6 +107,10 @@
 				cursor: pointer;
 				background-color: #f1f1f1;
 				color: #333;
+				width: auto; /* Override the default width: 100% */
+				display: inline-flex; /* Better alignment for the arrow and text */
+				align-items: center;
+				gap: 0.5rem;
 			}
 			#backBtn:hover {
 				background-color: #e0e0e0;
