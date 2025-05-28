@@ -55,6 +55,7 @@ const messageNotificationBox = document.getElementById("messageNotifications");
 const incomingList = document.getElementById("incomingRequests");
 const outgoingList = document.getElementById("outgoingRequests");
 const friendsList = document.getElementById("friendsList");
+const blockedList = document.getElementById("blockedList");
 
 const deviceId = localStorage.getItem("deviceId");
 
@@ -333,45 +334,28 @@ function makeButton(text, onClick) {
 	return btn;
 }
 
-const sendFriendRequest = async (userId) => {
-	const res = await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		credentials: "include",
-		body: JSON.stringify({ friendId: userId }),
-	});
-
-	if (res.ok) {
-		alert("Request sent ✅");
-		loadFriendData();
-	} else {
-		const err = await res.text();
-		alert("Failed to send request ❌\n" + err);
-	}
-};
-
 /* DISPLAY */
 
 // ========= Real-time Search Section =========
 const renderSearchResults = (data) => {
-	userSearchResults.innerHTML = "";
-	if (data.length === 0) {
-		userSearchResults.style.display = "none";
-		return;
-	}
+    userSearchResults.innerHTML = "";
+    if (data.length === 0) {
+        userSearchResults.style.display = "none";
+        return;
+    }
 
-	data.forEach((user) => {
-		const li = document.createElement("li");
-		li.textContent = user.username;
-		li.addEventListener("click", () => {
-			sendFriendRequest(user.id); // Send friend request when user clicks on a result
-			userSearchInput.value = ""; // Clear search input
-			userSearchResults.style.display = "none"; // Hide dropdown after selection
-		});
-		userSearchResults.appendChild(li);
-	});
+    data.forEach((user) => {
+        const li = document.createElement("li");
+        li.textContent = user.username;
+        li.addEventListener("click", () => {
+            window.location.href = `profile.html?userId=${user.id}`; // Redirect to profile page
+            userSearchInput.value = ""; // Clear search input
+            userSearchResults.style.display = "none"; // Hide dropdown
+        });
+        userSearchResults.appendChild(li);
+    });
 
-	userSearchResults.style.display = "block"; // Show dropdown menu
+    userSearchResults.style.display = "block";
 };
 
 /* INITIALIZERS */
@@ -484,6 +468,33 @@ async function loadFriendData() {
 	});
 }
 
+// Add after loadFriendData function
+async function loadBlockedUsers() {
+    const blockedUsersRes = await fetchWithAutoRefresh(`${baseURL}/users/blocks`, {
+        credentials: "include",
+    });
+    if (!blockedUsersRes.ok) {
+        return;
+    }
+    const blockedUsersData = await blockedUsersRes.json();
+
+    renderList(blockedList, blockedUsersData, (item) => {
+        const li = document.createElement("li");
+        li.textContent = item.username;
+        
+        const unblockBtn = makeButton("Unblock", async () => {
+            await fetchWithAutoRefresh(`${baseURL}/users/blocks/${item.blocked_user_id}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+            loadBlockedUsers(); // Only reload blocked users list
+        });
+        
+        li.appendChild(unblockBtn);
+        return li;
+    });
+}
+
 /*`EVENT LISTENERS */
 userSearchInput.addEventListener("input", async () => {
 	const query = userSearchInput.value.trim();
@@ -554,4 +565,5 @@ checkAuthentication().then((isAuthenticated) => {
 	initializeNotificationCounter();
 	initializeMailboxNotificationCounter();
 	loadFriendData();
+	loadBlockedUsers();
 });
