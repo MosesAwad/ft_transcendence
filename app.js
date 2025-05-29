@@ -48,9 +48,9 @@ const start = async () => {
 		const db = connectDB("application");
 		console.log("Database connected");
 
-		// 2. Initiliaze models
-		const userModel = new User(db);
+		// 2. Initialize models
 		const friendModel = new Friend(db);
+		const userModel = new User(db);
 		const tokenModel = new Token(db);
 		const notificationModel = new Notification(db);
 		const chatModel = new Chat(db);
@@ -89,15 +89,13 @@ const start = async () => {
 			},
 			startRedirectPath: process.env.GOOGLE_REDIRECT_PATH, // register a fastify url to start the redirect flow to the service provider's OAuth2 login
 			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
-			redirectStateCookieName: "oauth2_state", // this cookie's path is equivalent to the GOOGLE_REDIRECT_PATH
-
 			generateStateFunction: (request) => {
 				const state = request.query.state;
 				return state;
 			},
 			checkStateFunction: (request, callback) => {
 				if (request.query.state === request.cookies["oauth2_state"]) {
-					const base64 = decodeURIComponent(request.query.state); // now we are decoding and verifying the state returned from google Oauth provider (which we told it to give in generateStateFunction)
+					const base64 = decodeURIComponent(request.query.state);
 					const json = Buffer.from(base64, "base64").toString(
 						"utf-8"
 					);
@@ -117,7 +115,16 @@ const start = async () => {
 		fastify.decorate("io", io);
 		handleSocketSetup(fastify);
 
-		// 5. Register routes
+		// 5. Initialize services (after Socket.io setup)
+		const blockService = require("./services/blockService")(
+			userModel,
+			friendModel,
+			notificationModel,
+			io,
+			onlineUsers
+		);
+
+		// 6. Register routes
 		fastify.register(authRoutes, {
 			userModel,
 			tokenModel,
@@ -129,7 +136,11 @@ const start = async () => {
 			onlineUsers,
 			prefix: "/api/v1/friendships",
 		});
-		fastify.register(userRoutes, { userModel, prefix: "/api/v1/users" });
+		fastify.register(userRoutes, {
+			userModel,
+			blockService,
+			prefix: "/api/v1/users",
+		});
 		fastify.register(notificationRoutes, {
 			notificationModel,
 			prefix: "/api/v1/notifications",
@@ -141,7 +152,7 @@ const start = async () => {
 			prefix: "/api/v1",
 		});
 
-		// 6. Start server with dual-stack support
+		// 7. Start server with dual-stack support
 		const address = await fastify.listen({
 			port: 3000,
 			host: "0.0.0.0",
@@ -149,17 +160,17 @@ const start = async () => {
 
 		console.log("Server running on ", address);
 
-		// 7. Console log the addresses of a socket each time a new one connects to our server
+		// 8. Console log the addresses of a socket each time a new one connects to our server
 		fastify.server.on("connection", (socket) => {
 			console.log("New connection from:", socket.remoteAddress);
 		});
 
-		// 8. Display online users in the console at regular intervals
+		// 9. Display online users in the console at regular intervals
 		setInterval(() => {
 			console.log(onlineUsers);
 		}, 5 * 1000);
 
-		// 9. Clean up stale refresh tokens from db at regular intervals
+		// 10. Clean up stale refresh tokens from db at regular intervals
 		cleanUpTokensJob(tokenModel);
 		setInterval(() => {
 			cleanUpTokensJob(tokenModel);

@@ -19,8 +19,7 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => {
 			if (notify) {
 				await friendNotificationService.notifyFriendRequestSent(
 					user,
-					friendId,
-					notifyInRealTime
+					friendId
 				);
 			}
 			reply.code(StatusCodes.CREATED).send({ success: true });

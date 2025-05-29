@@ -225,7 +225,13 @@ class Friend {
 		const q1 = baseQuery
 			.clone()
 			.where("friendships.user_id", userId)
+			// Note 4
+			.leftJoin("blocks as b", function () {
+				this.on("b.blocker_id", "=", userId) // blocker is the current user
+					.andOn("b.blocked_id", "=", "friendships.friend_id"); // blocked person is the friend (we need this because we are only concerned with blocked FRIENDS of the user, not just anyone who the user has blocked)
+			})
 			.join("users", "friendships.friend_id", "users.id")
+			.whereNull("b.id") // only include rows were the block id is null, meaning the user has not blocked the friend
 			.select(
 				"users.id as userId",
 				"users.username",
@@ -236,7 +242,13 @@ class Friend {
 		const q2 = baseQuery
 			.clone()
 			.where("friendships.friend_id", userId)
+			// Note 4
+			.leftJoin("blocks as b", function () {
+				this.on("b.blocker_id", "=", userId) // blocker is the current user
+					.andOn("b.blocked_id", "=", "friendships.user_id"); // blocked person is the friend (we need this because we are only concerned with blocked FRIENDS of the user, not just anyone who the user has blocked)
+			})
 			.join("users", "friendships.user_id", "users.id")
+			.whereNull("b.id") // only include rows were the block id is null, meaning the user has not blocked the friend
 			.select(
 				"users.id as userId",
 				"users.username",
@@ -244,21 +256,7 @@ class Friend {
 			);
 
 		const allFriends = await q1.union(q2);
-
-		// Filter friends based on block status
-		const filteredFriends = [];
-		for (const friend of allFriends) {
-			const blockStatus = await this.getBlockStatus(
-				userId,
-				friend.userId
-			);
-			// Only hide friend if the logged-in user blocked them
-			if (!blockStatus.user1BlockedUser2) {
-				filteredFriends.push(friend);
-			}
-		}
-
-		return filteredFriends;
+		return allFriends;
 	}
 
 	/*
@@ -269,7 +267,7 @@ class Friend {
 	*/
 	async listRequests(userId, status, direction) {
 		// First get all requests without block filtering
-		const baseQuery = this.db("friendships").where("status", status);
+		const baseQuery = this.db("friendships").where("status", status); // status is always 'pending' at this endpoint
 		let requests;
 
 		if (direction === "sent") {
@@ -286,7 +284,13 @@ class Friend {
 			requests = await baseQuery
 				.clone()
 				.where("friendships.friend_id", userId)
+				// Note 5
+				.leftJoin("blocks as b", function () {
+					this.on("b.blocker_id", "=", userId) // blocker is the current user
+						.andOn("b.blocked_id", "=", "friendships.user_id"); // blocked person is the sender (we need this because we are only concerned with blocked SENDERS of the user, not just anyone who the user has blocked)
+				})
 				.join("users", "friendships.user_id", "users.id")
+				.whereNull("b.id") // only include rows were the block id is null, meaning the user has not blocked the sender
 				.select(
 					"friendships.id as friendshipId",
 					"users.id as senderId",
@@ -294,25 +298,41 @@ class Friend {
 				);
 		}
 
-		// Filter requests based on block status
-		const filteredRequests = [];
-		for (const request of requests) {
-			const otherUserId =
-				direction === "sent" ? request.recipientId : request.senderId;
-			const blockStatus = await this.getBlockStatus(userId, otherUserId);
+		return requests;
+	}
 
-			if (direction === "sent") {
-				// For outgoing requests, show even if receiver blocked me
-				filteredRequests.push(request);
-			} else {
-				// For incoming requests, hide if I blocked the sender
-				if (!blockStatus.user1BlockedUser2) {
-					filteredRequests.push(request);
-				}
-			}
-		}
+	/*
+		==================== Purpose ====================
+ 			* Helper for the blockService
+			* Find friendship between two users
+		==================================================
+	*/
+	async findFriendshipBetweenUsers(user1Id, user2Id) {
+		return await this.db("friendships")
+			.where(function () {
+				this.where({
+					user_id: user1Id,
+					friend_id: user2Id,
+				}).orWhere({
+					user_id: user2Id,
+					friend_id: user1Id,
+				});
+			})
+			.whereIn("status", ["accepted", "pending"])
+			.first();
+	}
 
-		return filteredRequests;
+	/*
+		==================== Purpose ====================
+			* Helper for the blockService
+			* Update friendship status
+		==================================================
+	*/
+	async updateFriendshipStatus(friendshipId, newStatus) {
+		await this.db("friendships").where({ id: friendshipId }).update({
+			status: newStatus,
+			updated_at: this.db.fn.now(),
+		});
 	}
 }
 
@@ -384,4 +404,104 @@ module.exports = Friend;
 		The idea is that the current logged-in user could be listed either under the friend_id column (if he received the 
 		request) or the user_id column (if he sent the request). That's why we make two joins to reflect both scenarios and 
 		join the results in a union.
+	
+	Note 4
+		This is an alternative implementation of listFriends. This filters out requests based on block status without using a leftJoin. 
+		It seems easier to understand, but it is way less efficient due to the multiple database calls (in the for-of loop) for each request.
+
+		async listFriends(userId) {
+			// Get base friends list without block filtering
+			const baseQuery = this.db("friendships").where("status", "accepted");
+
+			// Query when user is the sender of friend request
+			const q1 = baseQuery
+				.clone()
+				.where("friendships.user_id", userId)
+				.join("users", "friendships.friend_id", "users.id")
+				.select(
+					"users.id as userId",
+					"users.username",
+					"friendships.id as friendshipId"
+				);
+
+			// Query when user is the receiver of friend request
+			const q2 = baseQuery
+				.clone()
+				.where("friendships.friend_id", userId)
+				.join("users", "friendships.user_id", "users.id")
+				.select(
+					"users.id as userId",
+					"users.username",
+					"friendships.id as friendshipId"
+				);
+
+			const allFriends = await q1.union(q2);
+
+			// Filter friends based on block status
+			const filteredFriends = [];
+			for (const friend of allFriends) {
+				const blockStatus = await this.getBlockStatus(
+					userId,
+					friend.userId
+				);
+				// Only hide friend if the logged-in user blocked them
+				if (!blockStatus.user1BlockedUser2) {
+					filteredFriends.push(friend);
+				}
+			}
+
+			return filteredFriends;
+		}
+
+	Note 5  
+		This is an alternative implementation of listRequests. This filters out requests based on block status without using a leftJoin. 
+		It seems easier to understand, but it is way less efficient due to the multiple database calls (in the for-of loop) for each request.
+
+		async listRequests(userId, status, direction) {
+			// First get all requests without block filtering
+			const baseQuery = this.db("friendships").where("status", status); // status is always 'pending' at this endpoint
+			let requests;
+
+			if (direction === "sent") {
+				requests = await baseQuery
+					.clone()
+					.where("friendships.user_id", userId)
+					.join("users", "friendships.friend_id", "users.id")
+					.select(
+						"friendships.id as friendshipId",
+						"users.id as recipientId",
+						"users.username as senderUsername"
+					);
+			} else {
+				requests = await baseQuery
+					.clone()
+					.where("friendships.friend_id", userId)
+					.join("users", "friendships.user_id", "users.id")
+					.select(
+						"friendships.id as friendshipId",
+						"users.id as senderId",
+						"users.username as senderUsername"
+					);
+			}
+
+			// Filter requests based on block status
+			const filteredRequests = [];
+			for (const request of requests) {
+				const otherUserId =
+					direction === "sent" ? request.recipientId : request.senderId;
+				const blockStatus = await this.getBlockStatus(userId, otherUserId);
+
+				if (direction === "sent") {
+					// For outgoing requests, show even if receiver blocked me
+					filteredRequests.push(request);
+				} else {
+					// For incoming requests, hide if I blocked the sender
+					if (!blockStatus.user1BlockedUser2) {
+						filteredRequests.push(request);
+					}
+				}
+			}
+
+			return filteredRequests;
+		}
 */

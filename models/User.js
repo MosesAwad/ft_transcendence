@@ -78,19 +78,6 @@ class User {
 		return user;
 	}
 
-	async listAllBlocks(userId) {
-		const blocks = await this.db("blocks")
-			.join("users", "blocks.blocked_id", "users.id")
-			.select(
-				"blocks.id",
-				"blocks.blocked_id as userId",
-				"users.username"
-			)
-			.where({ blocker_id: userId });
-
-		return blocks;
-	}
-
 	async blockUser(userId, blockRecipientId) {
 		if (userId === blockRecipientId) {
 			throw new CustomError.BadRequestError(
@@ -106,7 +93,7 @@ class User {
 			);
 		}
 
-		const block = await this.db("blocks")
+		const [block] = await this.db("blocks")
 			.insert({
 				blocker_id: userId,
 				blocked_id: blockRecipientId,
@@ -133,6 +120,19 @@ class User {
 		await this.db("blocks").where({ id: blockId }).del();
 
 		return unblockedUser;
+	}
+
+	async listAllBlocks(userId) {
+		const blocks = await this.db("blocks")
+			.join("users", "blocks.blocked_id", "users.id")
+			.select(
+				"blocks.id",
+				"blocks.blocked_id as userId",
+				"users.username"
+			)
+			.where({ blocker_id: userId });
+
+		return blocks;
 	}
 }
 

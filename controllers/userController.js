@@ -1,4 +1,4 @@
-module.exports = (userModel) => ({
+module.exports = (userModel, blockService) => ({
 	listAllUsers: async (request, reply) => {
 		const { search, page, limit } = request.query;
 		const {
@@ -30,8 +30,8 @@ module.exports = (userModel) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		const block = await userModel.blockUser(userId, blockRecipientId);
 
+		const block = await blockService.blockUser(userId, blockRecipientId);
 		reply.send(block);
 	},
 
@@ -40,7 +40,7 @@ module.exports = (userModel) => ({
 		const {
 			user: { id: userId },
 		} = request.user;
-		const unblockedUserId = await userModel.unblockUser(userId, blockId);
+		const unblockedUserId = await blockService.unblockUser(userId, blockId);
 
 		reply.send({
 			msg: `Successfuly unblocked user with id ${unblockedUserId}`,

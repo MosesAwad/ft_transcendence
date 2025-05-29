@@ -6,14 +6,15 @@ const {
 } = require("../schemas/userSchemas");
 
 async function userRoutes(fastify, options) {
-	const { userModel } = options;
+	const { userModel, blockService } = options;
 	const {
 		listAllUsers,
 		listSingleUser,
 		listAllBlocks,
 		blockUser,
 		unblockUser,
-	} = require("../controllers/userController")(userModel);
+	} = require("../controllers/userController")(userModel, blockService);
+
 	fastify.get(
 		"/showUser",
 		{ preHandler: fastify.authenticate },
