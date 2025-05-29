@@ -15,11 +15,14 @@ module.exports = (friendModel, notificationModel, io, onlineUsers) => {
 			const { friendId } = request.body;
 			const { user } = request.user;
 
-			await friendModel.sendRequest(user.id, friendId);
-			await friendNotificationService.notifyFriendRequestSent(
-				user,
-				friendId
-			);
+			const notify = await friendModel.sendRequest(user.id, friendId);
+			if (notify) {
+				await friendNotificationService.notifyFriendRequestSent(
+					user,
+					friendId,
+					notifyInRealTime
+				);
+			}
 			reply.code(StatusCodes.CREATED).send({ success: true });
 		},
 

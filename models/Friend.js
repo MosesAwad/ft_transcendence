@@ -6,10 +6,39 @@ class Friend {
 
 	/*
 		==================== Purpose ====================
+					Check block status between users
+		==================================================
+	*/
+	async getBlockStatus(user1Id, user2Id) {
+		const blocks = await this.db("blocks")
+			.where(function () {
+				this.where({
+					blocker_id: user1Id,
+					blocked_id: user2Id,
+				}).orWhere({ blocker_id: user2Id, blocked_id: user1Id });
+			})
+			.select("blocker_id", "blocked_id");
+
+		return {
+			user1BlockedUser2: blocks.some(
+				(block) =>
+					block.blocker_id === user1Id && block.blocked_id === user2Id
+			),
+			user2BlockedUser1: blocks.some(
+				(block) =>
+					block.blocker_id === user2Id && block.blocked_id === user1Id
+			),
+			isMutualBlock: blocks.length === 2,
+		};
+	}
+
+	/*
+		==================== Purpose ====================
 						Send a friend request
 		==================================================
 	*/
 	async sendRequest(senderId, receiverId) {
+		let notify = true;
 		// Validation
 		const user = await this.db("users").where({ id: receiverId }).first();
 		if (!user) {
@@ -22,6 +51,18 @@ class Friend {
 			throw new CustomError.BadRequestError(
 				"Cannot send friend request to yourself"
 			);
+		}
+
+		// If the sender has blocked the receiver, always send this error (regardless of whether they were already friends pre-block or not)
+		const blockStatus = await this.getBlockStatus(senderId, receiverId);
+		if (blockStatus.user1BlockedUser2) {
+			throw new CustomError.UnauthorizedError(
+				"Please unblock the user before attempting to send a friend request"
+			);
+		}
+		// If the receiver has blocked the sender, do not notify the receiver about the request but still make the sender believe that the request was sent
+		if (blockStatus.user2BlockedUser1) {
+			notify = false;
 		}
 
 		const friendshipExists = await this.db("friendships")
@@ -40,8 +81,6 @@ class Friend {
 			})
 			.first();
 		if (friendshipExists) {
-			console.log(friendshipExists);
-			console.log(friendshipExists.status);
 			if (friendshipExists.status === "accepted") {
 				throw new CustomError.BadRequestError(
 					"You are already friends with this user"
@@ -64,6 +103,8 @@ class Friend {
 			user_id: senderId,
 			friend_id: receiverId,
 		});
+
+		return notify;
 	}
 
 	/*
@@ -152,7 +193,7 @@ class Friend {
 		else if (friendship.status === "declined") {
 			throw new CustomError.BadRequestError(
 				"This friend request has already been declined and cannot be modified!"
-			  );
+			);
 		}
 		// Validation: obtain the ex-friend's user id
 		else {
@@ -177,9 +218,10 @@ class Friend {
 		==================================================
 	*/
 	async listFriends(userId) {
-		// Note 2
+		// Get base friends list without block filtering
 		const baseQuery = this.db("friendships").where("status", "accepted");
 
+		// Query when user is the sender of friend request
 		const q1 = baseQuery
 			.clone()
 			.where("friendships.user_id", userId)
@@ -190,6 +232,7 @@ class Friend {
 				"friendships.id as friendshipId"
 			);
 
+		// Query when user is the receiver of friend request
 		const q2 = baseQuery
 			.clone()
 			.where("friendships.friend_id", userId)
@@ -200,7 +243,22 @@ class Friend {
 				"friendships.id as friendshipId"
 			);
 
-		return q1.union(q2); // Note 3
+		const allFriends = await q1.union(q2);
+
+		// Filter friends based on block status
+		const filteredFriends = [];
+		for (const friend of allFriends) {
+			const blockStatus = await this.getBlockStatus(
+				userId,
+				friend.userId
+			);
+			// Only hide friend if the logged-in user blocked them
+			if (!blockStatus.user1BlockedUser2) {
+				filteredFriends.push(friend);
+			}
+		}
+
+		return filteredFriends;
 	}
 
 	/*
@@ -210,9 +268,12 @@ class Friend {
 		==================================================
 	*/
 	async listRequests(userId, status, direction) {
-		const baseQuery = this.db("friendships").where("status", status); // status is always "pending" at this endpoint, enforced by listFriendshipOpts
+		// First get all requests without block filtering
+		const baseQuery = this.db("friendships").where("status", status);
+		let requests;
+
 		if (direction === "sent") {
-			return baseQuery
+			requests = await baseQuery
 				.clone()
 				.where("friendships.user_id", userId)
 				.join("users", "friendships.friend_id", "users.id")
@@ -222,7 +283,7 @@ class Friend {
 					"users.username as senderUsername"
 				);
 		} else {
-			return baseQuery
+			requests = await baseQuery
 				.clone()
 				.where("friendships.friend_id", userId)
 				.join("users", "friendships.user_id", "users.id")
@@ -232,6 +293,26 @@ class Friend {
 					"users.username as senderUsername"
 				);
 		}
+
+		// Filter requests based on block status
+		const filteredRequests = [];
+		for (const request of requests) {
+			const otherUserId =
+				direction === "sent" ? request.recipientId : request.senderId;
+			const blockStatus = await this.getBlockStatus(userId, otherUserId);
+
+			if (direction === "sent") {
+				// For outgoing requests, show even if receiver blocked me
+				filteredRequests.push(request);
+			} else {
+				// For incoming requests, hide if I blocked the sender
+				if (!blockStatus.user1BlockedUser2) {
+					filteredRequests.push(request);
+				}
+			}
+		}
+
+		return filteredRequests;
 	}
 }
 
