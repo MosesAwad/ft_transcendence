@@ -31,6 +31,7 @@ const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
 const fastifyStatic = require("@fastify/static");
 const oauthPlugin = require("@fastify/oauth2");
+const multipart = require("@fastify/multipart");
 
 // jobs
 const cleanUpTokensJob = require("./jobs/cleanUpTokensJob");
@@ -61,7 +62,6 @@ const start = async () => {
 			method: ["GET", "POST", "HEAD"],
 			credentials: true,
 		});
-
 		fastify.register(fastifyStatic, {
 			root: path.join(__dirname, "public"),
 			prefix: "/", // Note 1
@@ -76,7 +76,6 @@ const start = async () => {
 				signed: true,
 			},
 		});
-
 		fastify.register(oauthPlugin, {
 			name: "googleOAuth2",
 			scope: ["profile", "email"], // refers to Google's /auth/userinfo.email and /auth/userinfo.profile
@@ -107,7 +106,12 @@ const start = async () => {
 				callback(new Error("Invalid state"));
 			},
 		});
-
+		fastify.register(multipart, {
+			limits: {
+				fileSize: 5 * 1024 * 1024, // 5MB max file size
+				files: 1, // Max one file upload at a time
+			},
+		});
 		fastify.register(require("./plugins/authentication"));
 
 		// 4. Set up Socket.io

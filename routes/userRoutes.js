@@ -3,6 +3,7 @@ const {
 	listAllUsersOpts,
 	createBlockOpts,
 	deleteBlockOpts,
+	uploadProfilePictureOpts,
 } = require("../schemas/userSchemas");
 
 async function userRoutes(fastify, options) {
@@ -13,6 +14,7 @@ async function userRoutes(fastify, options) {
 		listAllBlocks,
 		blockUser,
 		unblockUser,
+		uploadProfilePicture,
 	} = require("../controllers/userController")(userModel, blockService);
 
 	fastify.get(
@@ -48,6 +50,14 @@ async function userRoutes(fastify, options) {
 			schema: deleteBlockOpts.schema,
 		},
 		unblockUser
+	);
+	fastify.post(
+		"/uploads/profile-picture",
+		{
+			preHandler: fastify.authenticate,
+			schema: uploadProfilePictureOpts.schema,
+		},
+		uploadProfilePicture
 	);
 }
 

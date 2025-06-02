@@ -1,3 +1,9 @@
+const fs = require("fs");
+const path = require("path");
+const util = require("util");
+const { pipeline } = require("stream");
+const { BadRequestError } = require("../errors");
+
 module.exports = (userModel, blockService) => ({
 	listAllUsers: async (request, reply) => {
 		const { search, page, limit } = request.query;
@@ -14,6 +20,19 @@ module.exports = (userModel, blockService) => ({
 		const user = await userModel.listSingleUser(userId);
 
 		reply.send(user);
+	},
+
+	uploadProfilePicture: async (request, reply) => {
+		const data = await request.file();
+		const { fileUrl } = await userModel.updateProfilePicture(
+			request.user.id,
+			data
+		);
+
+		reply.send({
+			message: "Profile picture uploaded successfully",
+			url: fileUrl,
+		});
 	},
 
 	listAllBlocks: async (request, reply) => {
