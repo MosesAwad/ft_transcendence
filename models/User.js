@@ -70,7 +70,7 @@ class User {
 
 	async listSingleUser(userId) {
 		const user = await this.db("users")
-			.select("id", "username", "email")
+			.select("*")
 			.where({ id: userId })
 			.first();
 		if (!user) {

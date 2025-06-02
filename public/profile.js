@@ -32,11 +32,25 @@ async function loadProfileData(userId) {
 		if (!userRes.ok) throw new Error("Failed to fetch user data");
 		const userData = await userRes.json();
 
-		// Update UI
+		// Update UI elements
 		document.getElementById("username").textContent = userData.username;
 		document.getElementById("email").textContent = userData.email;
-		document.querySelector(".profile-avatar").textContent =
-			userData.username[0].toUpperCase();
+		document.getElementById("profileImage").src =
+			userData.profile_picture || "/uploads/default.png";
+
+		// Show/hide profile actions based on ownership
+		const currentUser = await fetchWithAutoRefresh(
+			`${baseURL}/users/showUser`
+		);
+		const currentUserData = await currentUser.json();
+		const profileActions = document.getElementById("profileActions");
+
+		if (currentUserData.user.user.id === parseInt(userId)) {
+			profileActions.style.display = "flex";
+			setupProfilePictureHandlers();
+		} else {
+			profileActions.style.display = "none";
+		}
 
 		// Check friendship status
 		const friendshipsRes = await fetchWithAutoRefresh(
@@ -74,22 +88,81 @@ async function loadProfileData(userId) {
 			friendships,
 			pendingRequests,
 			incomingRequests,
-			blockedUsers
+			blockedUsers,
+			currentUserData
 		);
 	} catch (error) {
 		console.error("Error:", error);
 	}
 }
 
-function updateFriendButton(
+function setupProfilePictureHandlers() {
+	const uploadBtn = document.getElementById("uploadBtn");
+	const removeBtn = document.getElementById("removeBtn");
+	const fileInput = document.getElementById("profilePicture");
+	const profileImage = document.getElementById("profileImage");
+
+	uploadBtn.addEventListener("click", () => fileInput.click());
+
+	fileInput.addEventListener("change", async (e) => {
+		if (!e.target.files.length) return;
+
+		const formData = new FormData();
+		formData.append("file", e.target.files[0]);
+
+		try {
+			const res = await fetchWithAutoRefresh(
+				`${baseURL}/users/uploads/profile-picture`,
+				{
+					method: "POST",
+					credentials: "include",
+					body: formData,
+				}
+			);
+
+			if (res.ok) {
+				const data = await res.json();
+				profileImage.src = data.url;
+			}
+		} catch (error) {
+			console.error("Error uploading profile picture:", error);
+		}
+	});
+
+	removeBtn.addEventListener("click", async () => {
+		try {
+			const res = await fetchWithAutoRefresh(
+				`${baseURL}/users/uploads/profile-picture`,
+				{
+					method: "DELETE",
+					credentials: "include",
+				}
+			);
+
+			if (res.ok) {
+				profileImage.src = "/uploads/default.png";
+			}
+		} catch (error) {
+			console.error("Error removing profile picture:", error);
+		}
+	});
+}
+
+async function updateFriendButton(
 	userId,
 	friendships,
 	pendingRequests,
 	incomingRequests,
-	blockedUsers
+	blockedUsers,
+	currentUserData
 ) {
 	const btnContainer = document.querySelector(".button-container");
 	btnContainer.innerHTML = "";
+
+	// If viewing own profile, don't show any friend or block buttons
+	if (currentUserData.user.user.id === parseInt(userId)) {
+		return;
+	}
 
 	// First handle friend-related buttons
 	const incomingRequest = incomingRequests.find(

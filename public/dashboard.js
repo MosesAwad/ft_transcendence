@@ -56,6 +56,7 @@ const incomingList = document.getElementById("incomingRequests");
 const outgoingList = document.getElementById("outgoingRequests");
 const friendsList = document.getElementById("friendsList");
 const blockedList = document.getElementById("blockedList");
+const profileBtn = document.getElementById("profileBtn");
 
 const deviceId = localStorage.getItem("deviceId");
 
@@ -232,6 +233,15 @@ mailboxBtn.addEventListener("click", async () => {
 
 	const mailboxNotificationListData = await mailboxNotificationListRes.json();
 	renderNotificationList(messageNotificationBox, mailboxNotificationListData);
+});
+
+// Profile button click handler
+profileBtn.addEventListener("click", async () => {
+	const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
+	if (res.ok) {
+		const userData = await res.json();
+		window.location.href = `profile.html?userId=${userData.user.user.id}`;
+	}
 });
 
 // Helper function to render notification lists

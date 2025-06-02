@@ -7,10 +7,19 @@ function generateDeviceId() {
 async function fetchWithAutoRefresh(url, options = {}) {
 	const deviceId = localStorage.getItem("deviceId");
 	if (!deviceId) {
-		throw new Error("Missing deviceId in localStorage. Ensure it's set during login.");
+		throw new Error(
+			"Missing deviceId in localStorage. Ensure it's set during login."
+		);
 	}
 
 	const addDeviceIdToBody = (opts) => {
+		// If body is FormData, handle it differently
+		if (opts.body instanceof FormData) {
+			opts.body.append("deviceId", deviceId);
+			return opts;
+		}
+
+		// Otherwise handle as JSON as before
 		const headers = { ...opts.headers, "Content-Type": "application/json" };
 		const originalBody = opts.body ? JSON.parse(opts.body) : {};
 		const body = JSON.stringify({ ...originalBody, deviceId });
@@ -34,7 +43,10 @@ async function fetchWithAutoRefresh(url, options = {}) {
 
 		if (refreshRes.ok) {
 			let retryOptions = { ...options, credentials: "include" };
-			if (retryOptions.method && retryOptions.method.toUpperCase() !== "GET") {
+			if (
+				retryOptions.method &&
+				retryOptions.method.toUpperCase() !== "GET"
+			) {
 				retryOptions = addDeviceIdToBody(retryOptions);
 			}
 			res = await fetch(url, retryOptions);
