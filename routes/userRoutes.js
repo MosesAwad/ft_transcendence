@@ -15,6 +15,7 @@ async function userRoutes(fastify, options) {
 		blockUser,
 		unblockUser,
 		uploadProfilePicture,
+		deleteProfilePicture,
 	} = require("../controllers/userController")(userModel, blockService);
 
 	fastify.get(
@@ -58,6 +59,11 @@ async function userRoutes(fastify, options) {
 			schema: uploadProfilePictureOpts.schema,
 		},
 		uploadProfilePicture
+	);
+	fastify.delete(
+		"/uploads/profile-picture",
+		{ preHandler: fastify.authenticate },
+		deleteProfilePicture
 	);
 }
 

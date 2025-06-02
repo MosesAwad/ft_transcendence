@@ -91,6 +91,27 @@ class User {
 			throw new CustomError.BadRequestError("File must be an image");
 		}
 
+		// Get current user to check for existing profile picture
+		const user = await this.db("users").where("id", userId).first();
+
+		// If user has an existing profile picture, delete it
+		if (user.profile_picture) {
+			const oldFilepath = path.join(
+				__dirname,
+				"..",
+				"public",
+				user.profile_picture
+			);
+			try {
+				await fs.promises.unlink(oldFilepath);
+			} catch (error) {
+				if (error.code !== "ENOENT") {
+					// Ignore error if file doesn't exist
+					throw error;
+				}
+			}
+		}
+
 		// Create uploads directory if it doesn't exist
 		const uploadsDir = path.join(__dirname, "..", "public", "uploads");
 		if (!fs.existsSync(uploadsDir)) {
@@ -102,7 +123,7 @@ class User {
 		const uniqueFilename = `${userId}_${Date.now()}${fileExt}`;
 		const filepath = path.join(uploadsDir, uniqueFilename);
 
-		// Save the file (see Note 1)
+		// Save the file
 		await util.promisify(pipeline)(
 			fileData.file,
 			fs.createWriteStream(filepath)
@@ -112,9 +133,40 @@ class User {
 		const fileUrl = `/uploads/${uniqueFilename}`;
 		await this.db("users")
 			.where("id", userId)
-			.update({ profile_picture: fileUrl })
+			.update({ profile_picture: fileUrl });
 
 		return { fileUrl };
+	}
+
+	async deleteProfilePicture(userId) {
+		const user = await this.db("users").where("id", userId).first();
+
+		if (!user.profile_picture) {
+			throw new CustomError.BadRequestError(
+				"No profile picture to delete"
+			);
+		}
+
+		// Remove the file
+		const filepath = path.join(
+			__dirname,
+			"..",
+			"public",
+			user.profile_picture
+		);
+		try {
+			await fs.promises.unlink(filepath);
+		} catch (error) {
+			if (error.code !== "ENOENT") {
+				// Ignore error if file doesn't exist
+				throw error;
+			}
+		}
+
+		// Update database to remove profile picture reference
+		await this.db("users")
+			.where("id", userId)
+			.update({ profile_picture: null });
 	}
 
 	async blockUser(userId, blockRecipientId) {

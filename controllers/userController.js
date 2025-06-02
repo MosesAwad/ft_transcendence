@@ -27,15 +27,21 @@ module.exports = (userModel, blockService) => ({
 			user: { id: userId },
 		} = request.user;
 		const data = await request.file();
-		const { fileUrl } = await userModel.updateProfilePicture(
-			userId,
-			data
-		);
+		const { fileUrl } = await userModel.updateProfilePicture(userId, data);
 
 		reply.send({
 			message: "Profile picture uploaded successfully",
 			url: fileUrl,
 		});
+	},
+
+	deleteProfilePicture: async (request, reply) => {
+		const {
+			user: { id: userId },
+		} = request.user;
+		await userModel.deleteProfilePicture(userId);
+
+		reply.send({ message: "Profile picture removed successfully" });
 	},
 
 	listAllBlocks: async (request, reply) => {
