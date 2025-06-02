@@ -406,6 +406,7 @@ module.exports = Friend;
 		join the results in a union.
 	
 	Note 4
+
 		This is an alternative implementation of listFriends. This filters out requests based on block status without using a leftJoin. 
 		It seems easier to understand, but it is way less efficient due to the multiple database calls (in the for-of loop) for each request.
 
@@ -453,7 +454,8 @@ module.exports = Friend;
 			return filteredFriends;
 		}
 
-	Note 5  
+	Note 5
+
 		This is an alternative implementation of listRequests. This filters out requests based on block status without using a leftJoin. 
 		It seems easier to understand, but it is way less efficient due to the multiple database calls (in the for-of loop) for each request.
 
