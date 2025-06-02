@@ -43,22 +43,6 @@ const listSingleUserOpts = {
 
 const uploadProfilePictureOpts = {
 	schema: {
-		consumes: ["multipart/form-data"],
-		body: {
-			type: "object",
-			required: ["file"],
-			properties: {
-				file: {
-					type: "object",
-					properties: {
-						mimetype: {
-							type: "string",
-							pattern: "^image/", // Ensures mimetype starts with 'image/'
-						},
-					},
-				},
-			},
-		},
 		// This is a RESPONSE schema!
 		response: {
 			200: {
@@ -68,12 +52,6 @@ const uploadProfilePictureOpts = {
 					url: { type: "string" },
 				},
 			},
-			400: {
-                type: 'object',
-                properties: {
-                    message: { type: 'string' }
-                }
-            }
 		},
 	},
 };

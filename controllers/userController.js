@@ -23,9 +23,12 @@ module.exports = (userModel, blockService) => ({
 	},
 
 	uploadProfilePicture: async (request, reply) => {
+		const {
+			user: { id: userId },
+		} = request.user;
 		const data = await request.file();
 		const { fileUrl } = await userModel.updateProfilePicture(
-			request.user.id,
+			userId,
 			data
 		);
 

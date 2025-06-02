@@ -83,13 +83,13 @@ class User {
 	}
 
 	async updateProfilePicture(userId, fileData) {
-		// if (!fileData) {
-		// 	throw new CustomError.BadRequestError("No file uploaded");
-		// }
+		if (!fileData) {
+			throw new CustomError.BadRequestError("No file uploaded");
+		}
 
-		// if (!fileData.mimetype.startsWith("image/")) {
-		// 	throw new CustomError.BadRequestError("File must be an image");
-		// }
+		if (!fileData.mimetype.startsWith("image/")) {
+			throw new CustomError.BadRequestError("File must be an image");
+		}
 
 		// Create uploads directory if it doesn't exist
 		const uploadsDir = path.join(__dirname, "..", "public", "uploads");
