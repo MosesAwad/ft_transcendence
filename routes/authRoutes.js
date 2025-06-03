@@ -20,6 +20,7 @@ async function authRoutes(fastify, options) {
 		setupTwoFactor,
 		verifyTwoFactor,
 		validateTwoFactor,
+		disableTwoFactor,
 	} = require("../controllers/authController")(
 		userModel,
 		tokenModel,
@@ -68,6 +69,14 @@ async function authRoutes(fastify, options) {
 			schema: validateTwoFactorOpts.schema,
 		},
 		validateTwoFactor
+	);
+
+	fastify.post(
+		"/2fa/disable",
+		{
+			preHandler: fastify.authenticate,
+		},
+		disableTwoFactor
 	);
 }
 

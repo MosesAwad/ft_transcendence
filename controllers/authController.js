@@ -132,7 +132,6 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		}
 
 		// Check if 2FA is enabled
-		console.log(user);
 		if (user.two_factor_enabled) {
 			// Create a temporary token for 2FA validation
 			const tempToken = createJWT(
@@ -406,6 +405,15 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId);
 
 		reply.send({ user: userPayload });
+	},
+
+	disableTwoFactor: async (request, reply) => {
+		const { user } = request.user;
+
+		// Disable 2FA for the user
+		await userModel.disableTwoFactor(user.id);
+
+		reply.send({ success: true, message: "2FA has been disabled." });
 	},
 
 	errorHandler: (err, request, reply) => {

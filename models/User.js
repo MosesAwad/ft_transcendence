@@ -241,6 +241,14 @@ class User {
 		});
 	}
 
+	async disableTwoFactor(userId) {
+		await this.db("users").where({ id: userId }).update({
+			two_factor_enabled: false,
+			two_factor_verified: false,
+			two_factor_secret: null,
+		});
+	}
+
 	async findById(userId) {
 		const user = await this.db("users").where({ id: userId }).first();
 		return user;
