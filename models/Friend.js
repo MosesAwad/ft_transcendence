@@ -131,6 +131,11 @@ class Friend {
 				"You are already friends with this user"
 			);
 		}
+		if (friendship.status === "cancelled") {
+			throw new CustomError.BadRequestError(
+				"This friend request is no longer available"
+			);
+		}
 
 		// Update the friendship status
 		const status = action === "accept" ? "accepted" : "declined";
