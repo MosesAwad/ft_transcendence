@@ -1,0 +1,73 @@
+ █████╗ ██████╗ ██╗    ███████╗███╗   ██╗██████╗ ██████╗  ██████╗ ██╗███╗   ██╗████████╗███████╗
+██╔══██╗██╔══██╗██║    ██╔════╝████╗  ██║██╔══██╗██╔══██╗██╔═══██╗██║████╗  ██║╚══██╔══╝██╔════╝
+███████║██████╔╝██║    █████╗  ██╔██╗ ██║██║  ██║██████╔╝██║   ██║██║██╔██╗ ██║   ██║   ███████╗
+██╔══██║██╔═══╝ ██║    ██╔══╝  ██║╚██╗██║██║  ██║██╔═══╝ ██║   ██║██║██║╚██╗██║   ██║   ╚════██║
+██║  ██║██║     ██║    ███████╗██║ ╚████║██████╔╝██║     ╚██████╔╝██║██║ ╚████║   ██║   ███████║
+╚═╝  ╚═╝╚═╝     ╚═╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝      ╚═════╝ ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═════
+
+
+Action:
+
+    This endpoint returns a json containing the qrCode which the user must scan. This qrCode contains 
+    the secret belonging to the particular user.
+
+Endpoint:
+
+    POST /auth/2fa/setup
+
+==========================================================================================================
+
+Action:
+
+    After the user scans the QR code in the authenticator app, they get a code which regenertes every 30 
+    seconds. Our server and the authenticator app are generting the same code as that code is contains 
+    the key of the user and the current timestamp. If the token from the authenticator submitted to this 
+    endpoint is correct, 2FA is now verified and active for the user.
+ 
+Endpoint:
+
+        POST /auth/2fa/verify
+
+        {
+            "token": "779025"
+        }
+
+==========================================================================================================
+
+Action:
+
+    This is the route that a user should be redirected to once they hit the /auth/login route. If 2FA is 
+    enabled for the user, the login route would instead return this:
+
+        {
+            "requiresTwoFactor": true,
+            "tempToken": "{{tempToken}}"
+        }
+    
+    The tempToken is a temporary JWT which the frontend must submit to the /auth/2fa/verify endpoint. It's fine 
+    to store it in memory on the frontend as the time window of this token is limited. It is just intended to reflect 
+    the partially authenticated state of the user as they have now provided the proper credentials but they still need 
+    to prove their OTP. Without it, someone could skip giving a password and jump straight into giving the code. The user 
+    logging in must insert the OTP (token) they have on their authenticator app and the frontend must also send it in the 
+    body of the request along with a deviceId. 
+    
+
+Endpoint:
+
+        POST /auth/2fa/verify
+
+        {
+            "token": "267651",
+            "tempToken": "{{tempToken}}",
+            "deviceId": "{{deviceId}}"
+        }
+
+==========================================================================================================
+
+Action:
+
+    This endpoint allows a user to disable 2FA.
+
+Endpoint:
+
+        POST /auth/2fa/disable

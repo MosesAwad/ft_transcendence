@@ -133,7 +133,7 @@ module.exports = (userModel, tokenModel, fastify) => ({
 
 		// Check if 2FA is enabled
 		if (user.two_factor_enabled) {
-			// Create a temporary token for 2FA validation
+			// Create a temporary token for 2FA validation (see Note 6)
 			const tempToken = createJWT(
 				fastify,
 				{
@@ -526,4 +526,10 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		if the refreshToken just expires and before logging in again, he lost lost the device id (cleared his localstorage for example), upon log-in, we lost access 
 		to the refreshToken that expired and so we never get to invalidate it. That is why we also rely on the expiry date, not just our is_valid boolean, this way 
 		we ensure that no replay attack is possible even if the refreshToken somehow got leaked.
+
+	Note 6
+
+		We create a temporary token that is valid for 5 minutes. It is just intended to reflect the partially authenticated state of the user as they have now provided 
+		the proper credentials but they still need to prove their OTP. Without the token, someone could skip giving a password and jump straight into giving the code in 
+		our validateTwoFactor controller.
 */
