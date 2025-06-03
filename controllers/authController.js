@@ -2,7 +2,8 @@ const { StatusCodes } = require("http-status-codes");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const CustomError = require("../errors");
-const { ref } = require("process");
+const speakeasy = require("speakeasy"); // for generating and verifying TOTP codes
+const QRCode = require("qrcode"); // to generate QR codes for 2FA setup
 
 /*
 	INSTRUCTIONS FOR FRONT-END:
@@ -130,6 +131,28 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			throw new CustomError.UnauthenticatedError("Invalid credentials");
 		}
 
+		// Check if 2FA is enabled
+		console.log(user);
+		if (user.two_factor_enabled) {
+			// Create a temporary token for 2FA validation
+			const tempToken = createJWT(
+				fastify,
+				{
+					userId: user.id,
+					deviceId,
+					require2FA: true,
+				},
+				"5m"
+			);
+
+			reply.send({
+				requiresTwoFactor: true,
+				tempToken,
+			});
+			return;
+		}
+
+		// Regular login flow continues...
 		const userPayload = createPayload(user);
 		const existingToken = await tokenModel.findByUserIdAndDeviceId(
 			user.id,
@@ -273,6 +296,116 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		// 👇 Control path if refresh token is present and valid but access token is no longer valid. In that case, attachCookiesToResponse makes a new access token.
 		attachCookiesToReply(fastify, reply, payload.user, newRefreshTokenId);
 		reply.send({ msg: "Access token refreshed" });
+	},
+
+	setupTwoFactor: async (request, reply) => {
+		const { user } = request.user;
+
+		// Generate new secret
+		const secret = speakeasy.generateSecret({
+			name: `ft_transcendence (${user.username})`,
+		});
+
+		// Generate QR code
+		const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+		// Store secret
+		await userModel.storeSecret(user.id, secret.base32);
+
+		// Only send QR code, not the secret
+		reply.send({ qrCode });
+	},
+
+	verifyTwoFactor: async (request, reply) => {
+		const { user } = request.user;
+		const { token } = request.body; // We no longer need secret from request
+
+		// Get the stored secret from database
+		const dbUser = await userModel.findById(user.id);
+		if (!dbUser.two_factor_secret) {
+			throw new CustomError.BadRequestError("2FA setup not initiated");
+		}
+
+		// Verify using the stored secret
+		const verified = speakeasy.totp.verify({
+			secret: dbUser.two_factor_secret,
+			encoding: "base32",
+			token,
+		});
+
+		if (!verified) {
+			throw new CustomError.BadRequestError("Invalid 2FA token");
+		}
+
+		// Enable 2FA
+		await userModel.enableTwoFactor(user.id);
+
+		reply.send({ success: true });
+	},
+
+	validateTwoFactor: async (request, reply) => {
+		const { token, tempToken, deviceId } = request.body;
+
+		// Verify the temporary token
+		let decoded;
+		try {
+			decoded = await fastify.jwt.verify(tempToken);
+		} catch (error) {
+			throw new CustomError.UnauthenticatedError(
+				"Invalid or expired session"
+			);
+		}
+
+		if (!decoded.require2FA || decoded.deviceId !== deviceId) {
+			throw new CustomError.UnauthenticatedError(
+				"Invalid authentication flow"
+			);
+		}
+
+		const user = await userModel.findById(decoded.userId);
+		if (!user || !user.two_factor_secret || !user.two_factor_enabled) {
+			throw new CustomError.UnauthenticatedError("Invalid credentials");
+		}
+
+		const verified = speakeasy.totp.verify({
+			secret: user.two_factor_secret,
+			encoding: "base32",
+			token,
+		});
+
+		if (!verified) {
+			throw new CustomError.UnauthenticatedError("Invalid 2FA token");
+		}
+
+		// Complete the login process
+		const userPayload = createPayload(user);
+		const existingToken = await tokenModel.findByUserIdAndDeviceId(
+			user.id,
+			deviceId
+		);
+
+		if (existingToken) {
+			await tokenModel.invalidateRefreshToken(
+				existingToken.refresh_token_id
+			);
+		}
+
+		const refreshTokenId = crypto.randomBytes(40).toString("hex");
+		const userAgent = request.headers["user-agent"];
+		const ip = request.ip;
+
+		const userToken = {
+			refreshTokenId,
+			ip,
+			userAgent,
+			userId: user.id,
+			deviceId,
+		};
+
+		await tokenModel.createRefreshToken(userToken);
+		attachCookiesToReply(fastify, reply, userPayload, refreshTokenId);
+
+		reply.send({ user: userPayload });
 	},
 
 	errorHandler: (err, request, reply) => {

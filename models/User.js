@@ -225,6 +225,26 @@ class User {
 
 		return blocks;
 	}
+
+	async storeSecret(userId, secret) {
+		await this.db("users").where({ id: userId }).update({
+			two_factor_secret: secret,
+			two_factor_enabled: false,
+			two_factor_verified: false,
+		});
+	}
+
+	async enableTwoFactor(userId) {
+		await this.db("users").where({ id: userId }).update({
+			two_factor_enabled: true,
+			two_factor_verified: true,
+		});
+	}
+
+	async findById(userId) {
+		const user = await this.db("users").where({ id: userId }).first();
+		return user;
+	}
 }
 
 module.exports = User;

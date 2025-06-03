@@ -3,16 +3,28 @@ const {
 	loginOpts,
 	logoutOpts,
 	refreshOpts,
+	setupTwoFactorOpts,
+	verifyTwoFactorOpts,
+	validateTwoFactorOpts,
 } = require("../schemas/authSchemas");
 
 async function authRoutes(fastify, options) {
 	const { userModel, tokenModel } = options;
-	const { errorHandler, register, login, googleCallback, logout, refresh } =
-		require("../controllers/authController")(
-			userModel,
-			tokenModel,
-			fastify
-		);
+	const {
+		errorHandler,
+		register,
+		login,
+		googleCallback,
+		logout,
+		refresh,
+		setupTwoFactor,
+		verifyTwoFactor,
+		validateTwoFactor,
+	} = require("../controllers/authController")(
+		userModel,
+		tokenModel,
+		fastify
+	);
 
 	// set the error handler
 	fastify.setErrorHandler(errorHandler);
@@ -20,9 +32,7 @@ async function authRoutes(fastify, options) {
 	// set the endpoints
 	fastify.post("/register", registerOpts, register);
 	fastify.post("/login", loginOpts, login);
-
 	fastify.get("/google/callback", googleCallback.bind(fastify));
-
 	fastify.post(
 		"/logout",
 		{
@@ -31,8 +41,34 @@ async function authRoutes(fastify, options) {
 		},
 		logout
 	);
-
 	fastify.post("/refresh", refreshOpts, refresh);
+
+	// 2FA routes
+	fastify.post(
+		"/2fa/setup",
+		{
+			preHandler: fastify.authenticate,
+			schema: setupTwoFactorOpts.schema,
+		},
+		setupTwoFactor
+	);
+
+	fastify.post(
+		"/2fa/verify",
+		{
+			preHandler: fastify.authenticate,
+			schema: verifyTwoFactorOpts.schema,
+		},
+		verifyTwoFactor
+	);
+
+	fastify.post(
+		"/2fa/validate",
+		{
+			schema: validateTwoFactorOpts.schema,
+		},
+		validateTwoFactor
+	);
 }
 
 module.exports = authRoutes;

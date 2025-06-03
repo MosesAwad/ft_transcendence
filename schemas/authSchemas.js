@@ -48,11 +48,39 @@ const loginOpts = {
 		headers: {
 			type: "object",
 			properties: {
-			  "user-agent": { type: "string" },
+				"user-agent": { type: "string" },
 			},
-			required: ["user-agent"]
-		  },
-		response: responseSchema,
+			required: ["user-agent"],
+		},
+		response: {
+			200: {
+				type: "object",
+				oneOf: [
+					{
+						type: "object",
+						properties: {
+							user: {
+								type: "object",
+								properties: {
+									id: { type: "integer" },
+									username: { type: "string" },
+								},
+								required: ["id", "username"],
+							},
+						},
+						required: ["user"],
+					},
+					{
+						type: "object",
+						properties: {
+							requiresTwoFactor: { type: "boolean" },
+							tempToken: { type: "string" },
+						},
+						required: ["requiresTwoFactor", "tempToken"],
+					},
+				],
+			},
+		},
 	},
 };
 
@@ -84,11 +112,58 @@ const refreshOpts = {
 		},
 		required: ["deviceId"],
 	},
-}
+};
+
+const setupTwoFactorOpts = {
+	schema: {
+		response: {
+			200: {
+				type: "object",
+				properties: {
+					qrCode: { type: "string" },
+				},
+				required: ["qrCode"],
+			},
+		},
+	},
+};
+
+const verifyTwoFactorOpts = {
+	schema: {
+		body: {
+			type: "object",
+			properties: {
+				token: { type: "string", minLength: 6, maxLength: 6 },
+			},
+			required: ["token"],
+		},
+	},
+};
+
+const validateTwoFactorOpts = {
+	schema: {
+		body: {
+			type: "object",
+			properties: {
+				token: { type: "string", minLength: 6, maxLength: 6 },
+				tempToken: { type: "string" },
+				deviceId: {
+					type: "string",
+					pattern:
+						"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+				},
+			},
+			required: ["token", "tempToken", "deviceId"],
+		},
+	},
+};
 
 module.exports = {
 	registerOpts,
 	loginOpts,
 	logoutOpts,
-	refreshOpts
+	refreshOpts,
+	setupTwoFactorOpts,
+	verifyTwoFactorOpts,
+	validateTwoFactorOpts,
 };
