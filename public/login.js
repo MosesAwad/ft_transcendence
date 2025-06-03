@@ -1,9 +1,13 @@
 let deviceId = null;
+let tempToken = null;
 
 document.addEventListener("DOMContentLoaded", () => {
 	const loginForm = document.getElementById("loginForm");
-	if (!loginForm) return;
+	const twoFactorForm = document.getElementById("twoFactorForm");
 	const googleBtn = document.getElementById("googleLoginBtn");
+	const error2FA = document.getElementById("error2FA");
+
+	if (!loginForm) return;
 
 	loginForm.addEventListener("submit", async (e) => {
 		e.preventDefault();
@@ -16,29 +20,72 @@ document.addEventListener("DOMContentLoaded", () => {
 			localStorage.setItem("deviceId", deviceId);
 		}
 
-		const res = await fetch(`${baseURL}/auth/login`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			// credentials: "include", // NO NEED FOR THIS, IT'S THE LOGIN ROUTE, WHY SEND CREDENTIALS?
-			body: JSON.stringify({ email, password, deviceId }),
-		});
+		try {
+			const res = await fetch(`${baseURL}/auth/login`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email, password, deviceId }),
+			});
 
-		if (res.ok) {
+			if (!res.ok) {
+				const err = await res.text();
+				throw new Error(err);
+			}
+
+			const data = await res.json();
+
+			if (data.requiresTwoFactor) {
+				// Show 2FA form and store temporary token
+				tempToken = data.tempToken;
+				loginForm.style.display = "none";
+				twoFactorForm.style.display = "block";
+				googleBtn.style.display = "none";
+			} else {
+				// Regular login success
+				window.location.href = "dashboard.html";
+			}
+		} catch (err) {
+			alert(`Login failed ❌\n${err.message}`);
+		}
+	});
+
+	twoFactorForm.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const totpCode = document.getElementById("totpCode").value;
+
+		try {
+			const res = await fetch(`${baseURL}/auth/2fa/validate`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					token: totpCode,
+					tempToken,
+					deviceId,
+				}),
+			});
+
+			if (!res.ok) {
+				const err = await res.text();
+				error2FA.textContent = "Invalid code. Please try again.";
+				error2FA.style.display = "block";
+				throw new Error(err);
+			}
+
+			// 2FA validation successful
 			window.location.href = "dashboard.html";
-		} else {
-			const err = await res.text();
-			alert(`Login failed ❌\n${err}`);
+		} catch (err) {
+			console.error("2FA validation failed:", err);
 		}
 	});
 
 	googleBtn.addEventListener("click", (e) => {
-		e.preventDefault(); // VERY IMPORTANT! Note 1
+		e.preventDefault();
 
 		// Disable the button immediately to prevent double-clicks
 		googleBtn.disabled = true;
 
 		// Get or generate deviceId
-		let deviceId = localStorage.getItem("deviceId");
+		deviceId = localStorage.getItem("deviceId");
 		if (!deviceId) {
 			deviceId = generateDeviceId();
 			localStorage.setItem("deviceId", deviceId);

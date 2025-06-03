@@ -146,6 +146,121 @@
 			#backBtn:hover {
 				background-color: #e0e0e0;
 			}
+			.security-section {
+				margin-top: 2rem;
+				padding: 2rem;
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				background: #f8f9fa;
+			}
+
+			.security-status {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				margin-bottom: 2rem;
+			}
+
+			.status-badge {
+				display: inline-block;
+				padding: 0.25rem 1rem;
+				border-radius: 20px;
+				font-size: 0.875rem;
+				font-weight: bold;
+			}
+
+			.status-enabled {
+				background-color: #28a745;
+				color: white;
+			}
+
+			.status-disabled {
+				background-color: #dc3545;
+				color: white;
+			}
+
+			.security-controls {
+				margin-top: 2rem;
+				display: flex;
+				justify-content: center;
+				width: 100%;
+			}
+
+			#initialSetup {
+				width: 100%;
+				display: flex;
+				justify-content: center;
+			}
+
+			#setupTwoFactorBtn,
+			#disableTwoFactorBtn {
+				width: 90%;
+				padding: 1rem;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-weight: bold;
+				font-size: 1rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.5rem;
+				margin-top: 1rem;
+			}
+
+			#setupTwoFactorBtn {
+				background-color: #007bff;
+				color: white;
+			}
+
+			#setupTwoFactorBtn:hover {
+				background-color: #0056b3;
+			}
+
+			#disableTwoFactorBtn {
+				background-color: #dc3545;
+				color: white;
+			}
+
+			#disableTwoFactorBtn:hover {
+				background-color: #c82333;
+			}
+
+			.qr-setup {
+				display: none;
+				margin-top: 2rem;
+				padding: 2rem;
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				background: white;
+			}
+
+			.qr-setup img {
+				max-width: 200px;
+				margin: 1rem 0;
+			}
+
+			.verification-input {
+				width: 100%;
+				max-width: 200px;
+				padding: 0.5rem;
+				font-size: 1.2rem;
+				letter-spacing: 0.5rem;
+				text-align: center;
+				margin: 1rem 0;
+			}
+
+			.error-message {
+				color: #dc3545;
+				margin-top: 0.5rem;
+				display: none;
+			}
+
+			.success-message {
+				color: #28a745;
+				margin-top: 0.5rem;
+				display: none;
+			}
 		</style>
 	</head>
 	<body>
@@ -179,6 +294,55 @@
 			</div>
 			<div class="profile-info">
 				<p id="email"></p>
+			</div>
+			<div class="security-section">
+				<h3>🔒 Account Security</h3>
+				<div class="security-status">
+					<span>Two-Factor Authentication</span>
+					<span id="twoFactorStatus" class="status-badge"
+						>Loading...</span
+					>
+				</div>
+
+				<div class="security-controls">
+					<div id="initialSetup">
+						<button id="setupTwoFactorBtn">
+							🔐 Set Up Two-Factor Authentication
+						</button>
+						<button id="disableTwoFactorBtn" style="display: none">
+							🔓 Disable Two-Factor Authentication
+						</button>
+					</div>
+
+					<div id="qrSetup" class="qr-setup">
+						<h4>Scan QR Code</h4>
+						<p>
+							1. Open your authenticator app (Google
+							Authenticator, Microsoft Authenticator, or Authy)
+						</p>
+						<p>2. Scan this QR code:</p>
+						<img id="qrCode" alt="QR Code for 2FA setup" />
+						<p>
+							3. Enter the 6-digit code from your authenticator
+							app:
+						</p>
+						<input
+							type="text"
+							id="verificationCode"
+							class="verification-input"
+							maxlength="6"
+							pattern="[0-9]*"
+							inputmode="numeric"
+							placeholder="000000"
+							required
+						/>
+						<button id="verifyCodeBtn" class="btn-primary">
+							Verify and Enable 2FA
+						</button>
+						<div id="setupError" class="error-message"></div>
+						<div id="setupSuccess" class="success-message"></div>
+					</div>
+				</div>
 			</div>
 			<div class="button-container" id="friendActionBtn">
 				<!-- Buttons will be dynamically added here -->

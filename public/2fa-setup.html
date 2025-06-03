@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Set Up Two-Factor Authentication</title>
+		<style>
+			body {
+				font-family: sans-serif;
+				max-width: 600px;
+				margin: 0 auto;
+				padding: 2rem;
+			}
+			.setup-container {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2rem;
+			}
+			.steps {
+				width: 100%;
+			}
+			.step {
+				margin-bottom: 2rem;
+			}
+			#qrCode {
+				padding: 1rem;
+				background: white;
+				border-radius: 8px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				max-width: 256px;
+			}
+			.verification-form {
+				width: 100%;
+				max-width: 300px;
+			}
+			.code-input {
+				width: 100%;
+				padding: 0.5rem;
+				font-size: 1.2rem;
+				letter-spacing: 0.5rem;
+				text-align: center;
+				margin-bottom: 1rem;
+			}
+			button {
+				width: 100%;
+				padding: 0.75rem;
+				background: #4caf50;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 1rem;
+			}
+			button:hover {
+				background: #45a049;
+			}
+			.error {
+				color: red;
+				margin-top: 0.5rem;
+				display: none;
+			}
+			.success {
+				color: #4caf50;
+				margin-top: 0.5rem;
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="setup-container">
+			<h1>Set Up Two-Factor Authentication</h1>
+
+			<div class="steps">
+				<div class="step">
+					<h2>Step 1: Install an Authenticator App</h2>
+					<p>
+						If you haven't already, install an authenticator app on
+						your mobile device:
+					</p>
+					<ul>
+						<li>Google Authenticator</li>
+						<li>Microsoft Authenticator</li>
+						<li>Authy</li>
+					</ul>
+				</div>
+
+				<div class="step">
+					<h2>Step 2: Scan QR Code</h2>
+					<p>Open your authenticator app and scan this QR code:</p>
+					<img id="qrCode" alt="QR Code for 2FA setup" />
+				</div>
+
+				<div class="step">
+					<h2>Step 3: Verify Setup</h2>
+					<p>
+						Enter the 6-digit code from your authenticator app to
+						verify the setup:
+					</p>
+					<form id="verifyForm" class="verification-form">
+						<input
+							type="text"
+							id="verificationCode"
+							class="code-input"
+							maxlength="6"
+							pattern="[0-9]*"
+							inputmode="numeric"
+							required
+						/>
+						<button type="submit">Verify and Enable 2FA</button>
+					</form>
+					<div id="error" class="error"></div>
+					<div id="success" class="success"></div>
+				</div>
+			</div>
+
+			<button
+				onclick="window.location.href='dashboard.html'"
+				id="doneBtn"
+				style="display: none"
+			>
+				Back to Dashboard
+			</button>
+		</div>
+
+		<script src="utils.js"></script>
+		<script src="2fa-setup.js"></script>
+	</body>
+</html>

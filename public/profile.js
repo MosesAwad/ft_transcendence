@@ -44,12 +44,126 @@ async function loadProfileData(userId) {
 		);
 		const currentUserData = await currentUser.json();
 		const profileActions = document.getElementById("profileActions");
+		const securitySection = document.querySelector(".security-section");
+		const setupTwoFactorBtn = document.getElementById("setupTwoFactorBtn");
+		const disableTwoFactorBtn = document.getElementById(
+			"disableTwoFactorBtn"
+		);
+		const twoFactorStatus = document.getElementById("twoFactorStatus");
+		const qrSetup = document.getElementById("qrSetup");
 
 		if (currentUserData.user.user.id === parseInt(userId)) {
 			profileActions.style.display = "flex";
 			setupProfilePictureHandlers();
+			securitySection.style.display = "block";
+
+			// Update 2FA status and show appropriate controls
+			if (userData.two_factor_enabled) {
+				twoFactorStatus.textContent = "Enabled";
+				twoFactorStatus.className = "status-badge status-enabled";
+				setupTwoFactorBtn.style.display = "none";
+				disableTwoFactorBtn.style.display = "block";
+				qrSetup.style.display = "none";
+			} else {
+				twoFactorStatus.textContent = "Disabled";
+				twoFactorStatus.className = "status-badge status-disabled";
+				setupTwoFactorBtn.style.display = "block";
+				disableTwoFactorBtn.style.display = "none";
+				qrSetup.style.display = "none";
+			}
+
+			// Setup 2FA button click handler
+			setupTwoFactorBtn.addEventListener("click", async () => {
+				try {
+					const setupRes = await fetchWithAutoRefresh(
+						`${baseURL}/auth/2fa/setup`,
+						{
+							method: "POST",
+							credentials: "include",
+						}
+					);
+
+					if (!setupRes.ok)
+						throw new Error("Failed to start 2FA setup");
+
+					const { qrCode } = await setupRes.json();
+					document.getElementById("qrCode").src = qrCode;
+					qrSetup.style.display = "block";
+					setupTwoFactorBtn.style.display = "none";
+				} catch (err) {
+					console.error("Error setting up 2FA:", err);
+					document.getElementById("setupError").textContent =
+						"Failed to start 2FA setup. Please try again.";
+					document.getElementById("setupError").style.display =
+						"block";
+				}
+			});
+
+			// Verification code submit handler
+			document
+				.getElementById("verifyCodeBtn")
+				.addEventListener("click", async () => {
+					const code =
+						document.getElementById("verificationCode").value;
+					const setupError = document.getElementById("setupError");
+					const setupSuccess =
+						document.getElementById("setupSuccess");
+
+					try {
+						const verifyRes = await fetchWithAutoRefresh(
+							`${baseURL}/auth/2fa/verify`,
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								credentials: "include",
+								body: JSON.stringify({ token: code }),
+							}
+						);
+
+						if (!verifyRes.ok) {
+							throw new Error("Invalid verification code");
+						}
+
+						setupSuccess.textContent =
+							"2FA has been successfully enabled!";
+						setupSuccess.style.display = "block";
+						setupError.style.display = "none";
+
+						// Reload profile data to update UI
+						setTimeout(() => {
+							loadProfileData(userId);
+						}, 1500);
+					} catch (err) {
+						setupError.textContent =
+							"Invalid verification code. Please try again.";
+						setupError.style.display = "block";
+						setupSuccess.style.display = "none";
+					}
+				});
+
+			// Disable 2FA button click handler
+			disableTwoFactorBtn.addEventListener("click", async () => {
+				try {
+					const res = await fetchWithAutoRefresh(
+						`${baseURL}/auth/2fa/disable`,
+						{
+							method: "POST",
+							credentials: "include",
+						}
+					);
+
+					if (!res.ok) throw new Error("Failed to disable 2FA");
+
+					// Reload profile to update UI
+					loadProfileData(userId);
+				} catch (err) {
+					console.error("Error disabling 2FA:", err);
+					alert("Failed to disable 2FA. Please try again.");
+				}
+			});
 		} else {
 			profileActions.style.display = "none";
+			securitySection.style.display = "none";
 		}
 
 		// Check friendship status
@@ -91,24 +205,26 @@ async function loadProfileData(userId) {
 			blockedUsers,
 			currentUserData
 		);
-	} catch (error) {
-		console.error("Error:", error);
+	} catch (err) {
+		console.error("Error loading profile:", err);
 	}
 }
 
 function setupProfilePictureHandlers() {
 	const uploadBtn = document.getElementById("uploadBtn");
 	const removeBtn = document.getElementById("removeBtn");
-	const fileInput = document.getElementById("profilePicture");
-	const profileImage = document.getElementById("profileImage");
+	const profilePicture = document.getElementById("profilePicture");
 
-	uploadBtn.addEventListener("click", () => fileInput.click());
+	uploadBtn.addEventListener("click", () => {
+		profilePicture.click();
+	});
 
-	fileInput.addEventListener("change", async (e) => {
-		if (!e.target.files.length) return;
+	profilePicture.addEventListener("change", async (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
 
 		const formData = new FormData();
-		formData.append("file", e.target.files[0]);
+		formData.append("file", file);
 
 		try {
 			const res = await fetchWithAutoRefresh(
@@ -120,12 +236,13 @@ function setupProfilePictureHandlers() {
 				}
 			);
 
-			if (res.ok) {
-				const data = await res.json();
-				profileImage.src = data.url;
-			}
-		} catch (error) {
-			console.error("Error uploading profile picture:", error);
+			if (!res.ok) throw new Error("Failed to upload profile picture");
+
+			const data = await res.json();
+			document.getElementById("profileImage").src = data.url;
+		} catch (err) {
+			console.error("Error uploading profile picture:", err);
+			alert("Failed to upload profile picture");
 		}
 	});
 
@@ -139,11 +256,13 @@ function setupProfilePictureHandlers() {
 				}
 			);
 
-			if (res.ok) {
-				profileImage.src = "/uploads/default.png";
-			}
-		} catch (error) {
-			console.error("Error removing profile picture:", error);
+			if (!res.ok) throw new Error("Failed to remove profile picture");
+
+			document.getElementById("profileImage").src =
+				"/uploads/default.png";
+		} catch (err) {
+			console.error("Error removing profile picture:", err);
+			alert("Failed to remove profile picture");
 		}
 	});
 }
@@ -203,72 +322,19 @@ async function updateFriendButton(
 
 		btnContainer.appendChild(acceptBtn);
 		btnContainer.appendChild(rejectBtn);
-	} else {
-		const btn = document.createElement("button");
-		btn.id = "friendActionBtn";
-
-		const friendship = friendships.find(
-			(f) => f.userId === parseInt(userId)
-		);
-		if (friendship) {
-			btn.textContent = "Remove Friend";
-			btn.className = "remove-friend";
-			btn.dataset.friendshipId = friendship.friendshipId;
-
-			btn.addEventListener("click", async () => {
-				await fetchWithAutoRefresh(
-					`${baseURL}/friendships/${friendship.friendshipId}`,
-					{
-						method: "DELETE",
-						credentials: "include",
-					}
-				);
-				loadProfileData(userId);
-			});
-		} else {
-			const pendingRequest = pendingRequests.find(
-				(r) => r.recipientId === parseInt(userId)
-			);
-			if (pendingRequest) {
-				btn.textContent = "Cancel Request";
-				btn.className = "request-sent";
-				btn.addEventListener("click", async () => {
-					await fetchWithAutoRefresh(
-						`${baseURL}/friendships/${pendingRequest.friendshipId}`,
-						{
-							method: "DELETE",
-							credentials: "include",
-						}
-					);
-					loadProfileData(userId);
-				});
-			} else {
-				btn.textContent = "Send Friend Request";
-				btn.className = "send-request";
-				btn.addEventListener("click", async () => {
-					await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						credentials: "include",
-						body: JSON.stringify({ friendId: userId }),
-					});
-					loadProfileData(userId);
-				});
-			}
-		}
-		btnContainer.appendChild(btn);
+		return;
 	}
 
-	// Add block/unblock button
-	const blockBtn = document.createElement("button");
-	const isBlocked = blockedUsers.find((b) => b.userId === parseInt(userId));
-
-	if (isBlocked) {
-		blockBtn.innerHTML = "🔓 Unblock User";
-		blockBtn.className = "unblock-user";
-		blockBtn.addEventListener("click", async () => {
+	const outgoingRequest = pendingRequests.find(
+		(r) => r.receiverId === parseInt(userId)
+	);
+	if (outgoingRequest) {
+		const cancelBtn = document.createElement("button");
+		cancelBtn.textContent = "Cancel Request";
+		cancelBtn.className = "reject-request";
+		cancelBtn.addEventListener("click", async () => {
 			await fetchWithAutoRefresh(
-				`${baseURL}/users/blocks/${isBlocked.id}`,
+				`${baseURL}/friendships/${outgoingRequest.friendshipId}`,
 				{
 					method: "DELETE",
 					credentials: "include",
@@ -276,25 +342,73 @@ async function updateFriendButton(
 			);
 			loadProfileData(userId);
 		});
+		btnContainer.appendChild(cancelBtn);
+		return;
+	}
+
+	const friendship = friendships.find((f) => f.id === parseInt(userId));
+	if (friendship) {
+		const removeFriendBtn = document.createElement("button");
+		removeFriendBtn.textContent = "Remove Friend";
+		removeFriendBtn.className = "reject-request";
+		removeFriendBtn.addEventListener("click", async () => {
+			await fetchWithAutoRefresh(
+				`${baseURL}/friendships/${friendship.friendshipId}`,
+				{
+					method: "DELETE",
+					credentials: "include",
+				}
+			);
+			loadProfileData(userId);
+		});
+		btnContainer.appendChild(removeFriendBtn);
 	} else {
-		blockBtn.innerHTML = "🚫 Block User";
+		const addFriendBtn = document.createElement("button");
+		addFriendBtn.textContent = "Add Friend";
+		addFriendBtn.className = "send-request";
+		addFriendBtn.addEventListener("click", async () => {
+			await fetchWithAutoRefresh(`${baseURL}/friendships`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ receiverId: userId }),
+			});
+			loadProfileData(userId);
+		});
+		btnContainer.appendChild(addFriendBtn);
+	}
+
+	// Then handle block button
+	const isBlocked = blockedUsers.some(
+		(block) => block.userId === parseInt(userId)
+	);
+	const blockBtn = document.createElement("button");
+	if (isBlocked) {
+		blockBtn.textContent = "Unblock User";
+		blockBtn.className = "unblock-user";
+		blockBtn.addEventListener("click", async () => {
+			const block = blockedUsers.find(
+				(b) => b.userId === parseInt(userId)
+			);
+			await fetchWithAutoRefresh(`${baseURL}/users/blocks/${block.id}`, {
+				method: "DELETE",
+				credentials: "include",
+			});
+			loadProfileData(userId);
+		});
+	} else {
+		blockBtn.textContent = "Block User";
 		blockBtn.className = "block-user";
 		blockBtn.addEventListener("click", async () => {
 			await fetchWithAutoRefresh(`${baseURL}/users/blocks`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
-				body: JSON.stringify({ blockRecipientId: parseInt(userId) }),
+				body: JSON.stringify({ blockedId: userId }),
 			});
 			loadProfileData(userId);
 		});
 	}
-
-	// Create a spacer div for visual separation
-	const spacer = document.createElement("div");
-	spacer.style.height = "1rem";
-	btnContainer.appendChild(spacer);
-
 	btnContainer.appendChild(blockBtn);
 }
 
