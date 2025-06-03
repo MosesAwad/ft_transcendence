@@ -530,6 +530,6 @@ module.exports = (userModel, tokenModel, fastify) => ({
 	Note 6
 
 		We create a temporary token that is valid for 5 minutes. It is just intended to reflect the partially authenticated state of the user as they have now provided 
-		the proper credentials but they still need to prove their OTP. Without the token, someone could skip giving a password and jump straight into giving the code in 
+		the proper credentials but they still need to provide their OTP. Without the token, someone could skip giving a password and jump straight into giving the code in 
 		our validateTwoFactor controller.
 */

@@ -47,7 +47,7 @@ Action:
     The tempToken is a temporary JWT which the frontend must submit to the /auth/2fa/verify endpoint. It's fine 
     to store it in memory on the frontend as the time window of this token is limited. It is just intended to reflect 
     the partially authenticated state of the user as they have now provided the proper credentials but they still need 
-    to prove their OTP. Without it, someone could skip giving a password and jump straight into giving the code. The user 
+    to provide their OTP. Without it, someone could skip giving a password and jump straight into giving the code. The user 
     logging in must insert the OTP (token) they have on their authenticator app and the frontend must also send it in the 
     body of the request along with a deviceId. 
     
