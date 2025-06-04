@@ -283,6 +283,12 @@ async function updateFriendButton(
 		return;
 	}
 
+	const btnWrapper = document.createElement("div");
+	btnWrapper.style.display = "flex";
+	btnWrapper.style.flexDirection = "column";
+	btnWrapper.style.gap = "10px";
+	btnWrapper.style.alignItems = "center";
+
 	// First handle friend-related buttons
 	const incomingRequest = incomingRequests.find(
 		(r) => r.senderId === parseInt(userId)
@@ -320,69 +326,95 @@ async function updateFriendButton(
 			loadProfileData(userId);
 		});
 
-		btnContainer.appendChild(acceptBtn);
-		btnContainer.appendChild(rejectBtn);
-		return;
-	}
-
-	const outgoingRequest = pendingRequests.find(
-		(r) => r.receiverId === parseInt(userId)
-	);
-	if (outgoingRequest) {
-		const cancelBtn = document.createElement("button");
-		cancelBtn.textContent = "Cancel Request";
-		cancelBtn.className = "reject-request";
-		cancelBtn.addEventListener("click", async () => {
-			await fetchWithAutoRefresh(
-				`${baseURL}/friendships/${outgoingRequest.friendshipId}`,
-				{
-					method: "DELETE",
-					credentials: "include",
-				}
-			);
-			loadProfileData(userId);
-		});
-		btnContainer.appendChild(cancelBtn);
-		return;
-	}
-
-	const friendship = friendships.find((f) => f.id === parseInt(userId));
-	if (friendship) {
-		const removeFriendBtn = document.createElement("button");
-		removeFriendBtn.textContent = "Remove Friend";
-		removeFriendBtn.className = "reject-request";
-		removeFriendBtn.addEventListener("click", async () => {
-			await fetchWithAutoRefresh(
-				`${baseURL}/friendships/${friendship.friendshipId}`,
-				{
-					method: "DELETE",
-					credentials: "include",
-				}
-			);
-			loadProfileData(userId);
-		});
-		btnContainer.appendChild(removeFriendBtn);
+		btnWrapper.appendChild(acceptBtn);
+		btnWrapper.appendChild(rejectBtn);
 	} else {
-		const addFriendBtn = document.createElement("button");
-		addFriendBtn.textContent = "Add Friend";
-		addFriendBtn.className = "send-request";
-		addFriendBtn.addEventListener("click", async () => {
-			await fetchWithAutoRefresh(`${baseURL}/friendships`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ receiverId: userId }),
+		const outgoingRequest = pendingRequests.find(
+			(r) => r.recipientId === parseInt(userId)
+		);
+
+		const friendship = friendships.find((f) => f.id === parseInt(userId));
+		if (friendship) {
+			const removeFriendBtn = document.createElement("button");
+			removeFriendBtn.textContent = "Remove Friend";
+			removeFriendBtn.className = "reject-request";
+			removeFriendBtn.addEventListener("click", async () => {
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${friendship.friendshipId}`,
+					{
+						method: "DELETE",
+						credentials: "include",
+					}
+				);
+				loadProfileData(userId);
 			});
-			loadProfileData(userId);
-		});
-		btnContainer.appendChild(addFriendBtn);
+			btnWrapper.appendChild(removeFriendBtn);
+		} else if (outgoingRequest) {
+			const requestSentBtn = document.createElement("button");
+			requestSentBtn.textContent = "Friend Request Sent";
+			requestSentBtn.className = "request-sent";
+			requestSentBtn.disabled = true;
+			requestSentBtn.style.width = "200px";
+			btnWrapper.appendChild(requestSentBtn);
+
+			const cancelBtn = document.createElement("button");
+			cancelBtn.textContent = "Cancel Request";
+			cancelBtn.className = "reject-request";
+			cancelBtn.style.width = "200px";
+			cancelBtn.addEventListener("click", async () => {
+				await fetchWithAutoRefresh(
+					`${baseURL}/friendships/${outgoingRequest.friendshipId}`,
+					{
+						method: "DELETE",
+						credentials: "include",
+					}
+				);
+				loadProfileData(userId);
+			});
+			btnWrapper.appendChild(cancelBtn);
+		} else {
+			const addFriendBtn = document.createElement("button");
+			addFriendBtn.textContent = "Add Friend";
+			addFriendBtn.className = "send-request";
+			addFriendBtn.addEventListener("click", async () => {
+				try {
+					const res = await fetchWithAutoRefresh(
+						`${baseURL}/friendships`,
+						{
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							credentials: "include",
+							body: JSON.stringify({ friendId: userId }),
+						}
+					);
+
+					if (res.ok) {
+						// Optimistically update UI immediately
+						addFriendBtn.remove();
+						const requestSentBtn = document.createElement("button");
+						requestSentBtn.textContent = "Friend Request Sent";
+						requestSentBtn.className = "request-sent";
+						requestSentBtn.disabled = true;
+						btnWrapper.appendChild(requestSentBtn);
+						// Fetch fresh data to get new friendshipId and update state
+						setTimeout(() => loadProfileData(userId), 500);
+					}
+				} catch (error) {
+					console.error("Error sending friend request:", error);
+				}
+			});
+			btnWrapper.appendChild(addFriendBtn);
+		}
 	}
+	btnContainer.appendChild(btnWrapper);
 
 	// Then handle block button
 	const isBlocked = blockedUsers.some(
 		(block) => block.userId === parseInt(userId)
 	);
 	const blockBtn = document.createElement("button");
+	blockBtn.style.width = "200px"; // Match other buttons width
+
 	if (isBlocked) {
 		blockBtn.textContent = "Unblock User";
 		blockBtn.className = "unblock-user";
@@ -404,12 +436,12 @@ async function updateFriendButton(
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
-				body: JSON.stringify({ blockedId: userId }),
+				body: JSON.stringify({ blockRecipientId: userId }),
 			});
 			loadProfileData(userId);
 		});
 	}
-	btnContainer.appendChild(blockBtn);
+	btnWrapper.appendChild(blockBtn);
 }
 
 socket.on("friendRequestInform", () => {

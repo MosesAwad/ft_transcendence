@@ -200,6 +200,11 @@ class Friend {
 				"This friend request has already been declined and cannot be modified!"
 			);
 		}
+		else if (friendship.status === "unfriended") {
+			throw new CustomError.BadRequestError(
+				"Cannot unfriend a user you are no longer friends with"
+			);
+		}
 		// Validation: obtain the ex-friend's user id
 		else {
 			exFriendIdCapture =
