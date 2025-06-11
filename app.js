@@ -58,8 +58,13 @@ const start = async () => {
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt and oauthPlugin)
 		fastify.register(require("@fastify/cors"), {
-			origin: ["http://127.0.0.1:3000"],
-			method: ["GET", "POST", "HEAD"],
+			origin: [
+				"http://127.0.0.1:3000",
+				"http://localhost:3000",
+				"http://127.0.0.1:3003",
+				"http://localhost:3003",
+			],
+			method: ["GET", "POST", "HEAD", "DELETE", "PATCH"],
 			credentials: true,
 		});
 		fastify.register(fastifyStatic, {
@@ -115,7 +120,18 @@ const start = async () => {
 		fastify.register(require("./plugins/authentication"));
 
 		// 4. Set up Socket.io
-		const io = socketIo(fastify.server); // Attach Socket.io to Fastify's server instance
+		const io = socketIo(fastify.server, {
+			cors: {
+				origin: [
+					"http://127.0.0.1:3000",
+					"http://localhost:3000",
+					"http://127.0.0.1:3003",
+					"http://localhost:3003",
+				],
+				methods: ["GET", "POST", "HEAD", "DELETE", "PATCH"],
+				credentials: true,
+			},
+		}); // Attach Socket.io to Fastify's server instance
 		fastify.decorate("io", io);
 		handleSocketSetup(fastify);
 
@@ -166,7 +182,8 @@ const start = async () => {
 
 		// 8. Console log the addresses of a socket each time a new one connects to our server
 		fastify.server.on("connection", (socket) => {
-			console.log("New connection from:", socket.remoteAddress);
+			console.log("New connection from IP:", socket.remoteAddress);
+			console.log("Remote port:", socket.remotePort);
 		});
 
 		// 9. Display online users in the console at regular intervals
@@ -195,7 +212,7 @@ start();
 		What's the point of the prefix?
 			* If your frontend expects URLs like /index.html, /styles.css, etc. — use prefix: '/'.
 			* If your frontend refers to files like /public/index.html, /public/styles.css — use prefix: '/public/'.
-		
+	;	
 		Obviously, the front-end would be using option 1 and thus, we set prefix to '/'. Basically, the prefix depends on 
 		how you're referencing assets in your HTML/JS
 */
