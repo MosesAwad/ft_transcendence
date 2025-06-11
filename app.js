@@ -20,12 +20,15 @@ const friendRoutes = require("./routes/friendRoutes");
 const userRoutes = require("./routes/userRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const gameRoutes = require("./routes/gameRoutes");
 
 const User = require("./models/User");
 const Token = require("./models/Token");
 const Friend = require("./models/Friend");
 const Notification = require("./models/Notification");
 const Chat = require("./models/Chat");
+const Match = require("./models/Match");
+const Tournament = require("./models/Tournament");
 
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
@@ -55,6 +58,8 @@ const start = async () => {
 		const tokenModel = new Token(db);
 		const notificationModel = new Notification(db);
 		const chatModel = new Chat(db);
+		const matchModel = new Match(db);
+		const tournamentModel = new Tournament(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt and oauthPlugin)
 		fastify.register(require("@fastify/cors"), {
@@ -170,6 +175,10 @@ const start = async () => {
 			notificationModel,
 			onlineUsers,
 			prefix: "/api/v1",
+		});
+		fastify.register(gameRoutes, {
+			matchModel,
+			prefix: "/api/v1/games",
 		});
 
 		// 7. Start server with dual-stack support
