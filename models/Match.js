@@ -70,6 +70,42 @@ class Match {
 		const matches = await query.orderBy("created_at", "desc");
 		return matches;
 	}
+
+	async listUserMatches(userId, limit = 10, offset = 0) {
+		const user = await this.db("users").where({ id: userId }).first();
+
+		if (!user) {
+			throw new CustomError.NotFoundError(`No user with id ${userId}`);
+		}
+
+		const matches = await this.db("matches")
+			.where(function () {
+				this.where("player1_name", user.username).orWhere(
+					"player2_name",
+					user.username
+				);
+			})
+			.orderBy("created_at", "desc")
+			.limit(limit)
+			.offset(offset);
+
+		const total = await this.db("matches")
+			.where(function () {
+				this.where("player1_name", user.username).orWhere(
+					"player2_name",
+					user.username
+				);
+			})
+			.count("* as count")
+			.first();
+
+		return {
+			matches,
+			total: total.count,
+			limit,
+			offset,
+		};
+	}
 }
 
 module.exports = Match;

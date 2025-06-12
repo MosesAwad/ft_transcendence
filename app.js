@@ -20,7 +20,7 @@ const friendRoutes = require("./routes/friendRoutes");
 const userRoutes = require("./routes/userRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
-const gameRoutes = require("./routes/gameRoutes");
+const matchRoutes = require("./routes/matchRoutes");
 
 const User = require("./models/User");
 const Token = require("./models/Token");
@@ -98,6 +98,7 @@ const start = async () => {
 			},
 			startRedirectPath: process.env.GOOGLE_REDIRECT_PATH, // register a fastify url to start the redirect flow to the service provider's OAuth2 login
 			callbackUri: process.env.GOOGLE_CALLBACK_URL, // service provider redirects here after user login
+			redirectStateCookieName: "oauth2_state", // cookie name to store the state parameter
 			generateStateFunction: (request) => {
 				const state = request.query.state;
 				return state;
@@ -164,6 +165,7 @@ const start = async () => {
 		fastify.register(userRoutes, {
 			userModel,
 			blockService,
+			matchModel,
 			prefix: "/api/v1/users",
 		});
 		fastify.register(notificationRoutes, {
@@ -176,9 +178,9 @@ const start = async () => {
 			onlineUsers,
 			prefix: "/api/v1",
 		});
-		fastify.register(gameRoutes, {
+		fastify.register(matchRoutes, {
 			matchModel,
-			prefix: "/api/v1/games",
+			prefix: "/api/v1/matches",
 		});
 
 		// 7. Start server with dual-stack support

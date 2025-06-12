@@ -3,8 +3,9 @@ const path = require("path");
 const util = require("util");
 const { pipeline } = require("stream");
 const { BadRequestError } = require("../errors");
+const { StatusCodes } = require("http-status-codes");
 
-module.exports = (userModel, blockService) => ({
+module.exports = (userModel, blockService, matchModel) => ({
 	listAllUsers: async (request, reply) => {
 		const { search, page, limit } = request.query;
 		const {
@@ -73,5 +74,14 @@ module.exports = (userModel, blockService) => ({
 		reply.send({
 			msg: `Successfuly unblocked user with id ${unblockedUserId}`,
 		});
+	},
+
+	listUserMatches: async (request, reply) => {
+		const { userId } = request.params;
+		const { limit = 10, offset = 0 } = request.query;
+
+		const matches = await matchModel.listUserMatches(userId, limit, offset);
+
+		return reply.status(StatusCodes.OK).send(matches);
 	},
 });

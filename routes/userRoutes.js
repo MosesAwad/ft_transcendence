@@ -5,9 +5,10 @@ const {
 	deleteBlockOpts,
 	uploadProfilePictureOpts,
 } = require("../schemas/userSchemas");
+const { listUserMatchesOpts } = require("../schemas/matchSchemas");
 
 async function userRoutes(fastify, options) {
-	const { userModel, blockService } = options;
+	const { userModel, blockService, matchModel } = options;
 	const {
 		listAllUsers,
 		listSingleUser,
@@ -17,6 +18,9 @@ async function userRoutes(fastify, options) {
 		uploadProfilePicture,
 		deleteProfilePicture,
 	} = require("../controllers/userController")(userModel, blockService);
+	const { listUserMatches } = require("../controllers/matchController")(
+		matchModel
+	);
 
 	fastify.get(
 		"/showUser",
@@ -30,6 +34,7 @@ async function userRoutes(fastify, options) {
 		{ preHandler: fastify.authenticate, schema: listSingleUserOpts.schema },
 		listSingleUser
 	);
+
 	fastify.get(
 		"/",
 		{ preHandler: fastify.authenticate, schema: listAllUsersOpts.schema },
@@ -64,6 +69,14 @@ async function userRoutes(fastify, options) {
 		"/uploads/profile-picture",
 		{ preHandler: fastify.authenticate },
 		deleteProfilePicture
+	);
+	fastify.get(
+		"/:userId/matches",
+		{
+			preHandler: fastify.authenticate,
+			schema: listUserMatchesOpts.schema,
+		},
+		listUserMatches
 	);
 }
 

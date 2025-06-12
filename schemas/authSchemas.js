@@ -20,7 +20,12 @@ const registerOpts = {
 		body: {
 			type: "object",
 			properties: {
-				username: { type: "string", minLength: 3, maxLength: 50 },
+				username: {
+					type: "string",
+					minLength: 3,
+					maxLength: 50,
+					pattern: "^[\\S]+$", // No whitespace allowed
+				},
 				email: { type: "string", format: "email" },
 				password: { type: "string", minLength: 6 },
 			},

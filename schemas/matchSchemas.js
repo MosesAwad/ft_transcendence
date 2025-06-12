@@ -1,4 +1,4 @@
-const createGameOpts = {
+const createMatchOpts = {
 	schema: {
 		body: {
 			type: "object",
@@ -14,7 +14,7 @@ const createGameOpts = {
 	},
 };
 
-const updateGameOpts = {
+const updateMatchOpts = {
 	schema: {
 		body: {
 			type: "object",
@@ -28,7 +28,34 @@ const updateGameOpts = {
 	},
 };
 
+const listUserMatchesOpts = {
+	schema: {
+		params: {
+			type: "object",
+			required: ["userId"],
+			properties: {
+				userId: { type: "number" },
+			},
+		},
+		query: {
+			type: "object",
+			properties: {
+				page: {
+					type: "number",
+					minimum: 1,
+				},
+				limit: {
+					type: "number",
+					minimum: 1,
+				},
+			},
+			required: ["page", "limit"],
+		},
+	},
+};
+
 module.exports = {
-	createGameOpts,
-	updateGameOpts,
+	createMatchOpts,
+	updateMatchOpts,
+	listUserMatchesOpts,
 };

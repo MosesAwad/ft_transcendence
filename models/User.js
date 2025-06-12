@@ -11,12 +11,20 @@ class User {
 	}
 
 	async createUser({ username, email, password }) {
-		const user = await this.db("users")
+		const userEmailExists = await this.db("users")
 			.where({ email, google_id: null })
 			.first();
-		if (user) {
+		if (userEmailExists) {
 			throw new CustomError.BadRequestError("Email already in use!");
 		}
+
+		const userUsernameExists = await this.db("users")
+			.where({ username })
+			.first();
+		if (userUsernameExists) {
+			throw new CustomError.BadRequestError("Username already in use!");
+		}
+
 		const salt = await bcrypt.genSalt(10);
 		const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -31,14 +39,35 @@ class User {
 	}
 
 	async createGoogleUser({ googleId, email, username }) {
+		// Replace spaces with underscores
+		let sanitizedUsername = username.replace(/\s+/g, "_");
+
+		// Check if username exists and append number if needed
+		let userExists = true;
+		let counter = 1;
+		let finalUsername = sanitizedUsername;
+
+		while (userExists) {
+			const existingUser = await this.db("users")
+				.where({ username: finalUsername })
+				.first();
+
+			if (!existingUser) {
+				userExists = false;
+			} else {
+				finalUsername = `${sanitizedUsername}${counter}`;
+				counter++;
+			}
+		}
+
 		const [{ id }] = await this.db("users")
 			.insert({
-				username,
+				username: finalUsername,
 				email,
 				google_id: googleId,
 			})
 			.returning("id"); // SQLite returns id automatically
-		return { id, username, email };
+		return { id, username: finalUsername, email };
 	}
 
 	async findByEmail(email, googleId = null) {
