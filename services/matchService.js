@@ -7,48 +7,66 @@ module.exports = (matchModel, userModel) => ({
 		player1_name,
 		player2_name,
 		currentUserId,
+		match_type,
 	}) => {
-		// Determine if current user is player1 or player2
-		let otherPlayerName;
+		const validateUsername = async (userId, expectedUsername, label) => {
+			const user = await userModel.findById(userId);
+			if (!user || user.username !== expectedUsername) {
+				throw new CustomError.BadRequestError(
+					`${label} name does not match user's username`
+				);
+			}
+		};
 
+		const validateNoSpaces = (name, label) => {
+			if (name.includes(" ")) {
+				throw new CustomError.BadRequestError(
+					`${label} name cannot contain spaces`
+				);
+			}
+		};
+
+		if (match_type === "1vAi") {
+			if (player1_id !== currentUserId) {
+				throw new CustomError.BadRequestError(
+					"Player1 must be the current user in 1vAi matches"
+				);
+			}
+			await validateUsername(currentUserId, player1_name, "Player 1");
+			return {
+				player1_name,
+				player2_name: "AI bot",
+			};
+		}
+		if (player1_id && player2_id) {
+			throw new CustomError.UnauthorizedError(
+				"Only the current user's ID should be provided, impersonating other users is forbidden"
+			);
+		}
 		if (player1_name === player2_name) {
 			throw new CustomError.BadRequestError(
 				"Player names cannot be the same"
 			);
 		}
+
 		if (player1_id === currentUserId) {
-			// Verify player1_name matches user's username
-			const user = await userModel.findById(currentUserId);
-			if (!user || user.username !== player1_name) {
-				throw new CustomError.BadRequestError(
-					"Player 1 name does not match user's username"
-				);
-			}
-			// Validate and prepare player2's name
-			if (player2_name.includes(" ")) {
-				throw new CustomError.BadRequestError(
-					"Player 2 name cannot contain spaces"
-				);
-			}
-			otherPlayerName = `${player2_name} (local)`;
-			return { player1_name, player2_name: otherPlayerName };
-		} else if (player2_id === currentUserId) {
-			// Verify player2_name matches user's username
-			const user = await userModel.findById(currentUserId);
-			if (!user || user.username !== player2_name) {
-				throw new CustomError.BadRequestError(
-					"Player 2 name does not match user's username"
-				);
-			}
-			// Validate and prepare player1's name
-			if (player1_name.includes(" ")) {
-				throw new CustomError.BadRequestError(
-					"Player 1 name cannot contain spaces"
-				);
-			}
-			otherPlayerName = `${player1_name} (local)`;
-			return { player1_name: otherPlayerName, player2_name };
+			await validateUsername(currentUserId, player1_name, "Player 1");
+			validateNoSpaces(player2_name, "Player 2");
+			return {
+				player1_name,
+				player2_name: `${player2_name} (local)`,
+			};
 		}
+
+		if (player2_id === currentUserId) {
+			await validateUsername(currentUserId, player2_name, "Player 2");
+			validateNoSpaces(player1_name, "Player 1");
+			return {
+				player1_name: `${player1_name} (local)`,
+				player2_name,
+			};
+		}
+
 		throw new CustomError.BadRequestError(
 			"Current user must be either player1 or player2, check provided player IDs"
 		);

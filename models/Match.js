@@ -73,14 +73,7 @@ class Match {
 			.limit(limit)
 			.offset((page - 1) * limit);
 
-		const total = await query.clone().count("* as count").first();
-
-		return {
-			matches,
-			total: total.count,
-			limit,
-			page,
-		};
+		return matches;
 	}
 }
 

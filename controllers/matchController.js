@@ -27,6 +27,7 @@ module.exports = (matchModel, userModel) => {
 				player1_name,
 				player2_name,
 				currentUserId,
+				match_type
 			});
 
 			const match = await matchModel.createMatch({
