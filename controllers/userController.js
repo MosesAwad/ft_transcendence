@@ -5,83 +5,108 @@ const { pipeline } = require("stream");
 const { BadRequestError } = require("../errors");
 const { StatusCodes } = require("http-status-codes");
 
-module.exports = (userModel, blockService, matchModel) => ({
-	listAllUsers: async (request, reply) => {
-		const { search, page, limit } = request.query;
-		const {
-			user: { id: userId },
-		} = request.user;
-		const users = await userModel.listUsers(search, page, limit, userId);
+module.exports = (userModel, blockService, matchModel) => {
+	const matchService = require("../services/matchService")(
+		matchModel,
+		userModel
+	);
 
-		reply.send(users);
-	},
+	return {
+		listAllUsers: async (request, reply) => {
+			const { search, page, limit } = request.query;
+			const {
+				user: { id: userId },
+			} = request.user;
+			const users = await userModel.listUsers(
+				search,
+				page,
+				limit,
+				userId
+			);
 
-	listSingleUser: async (request, reply) => {
-		const { userId } = request.params;
-		const user = await userModel.listSingleUser(userId);
+			reply.send(users);
+		},
 
-		reply.send(user);
-	},
+		listSingleUser: async (request, reply) => {
+			const { userId } = request.params;
+			const user = await userModel.listSingleUser(userId);
 
-	uploadProfilePicture: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-		const data = await request.file();
-		const { fileUrl } = await userModel.updateProfilePicture(userId, data);
+			reply.send(user);
+		},
 
-		reply.send({
-			message: "Profile picture uploaded successfully",
-			url: fileUrl,
-		});
-	},
+		uploadProfilePicture: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			const data = await request.file();
+			const { fileUrl } = await userModel.updateProfilePicture(
+				userId,
+				data
+			);
 
-	deleteProfilePicture: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-		await userModel.deleteProfilePicture(userId);
+			reply.send({
+				message: "Profile picture uploaded successfully",
+				url: fileUrl,
+			});
+		},
 
-		reply.send({ message: "Profile picture removed successfully" });
-	},
+		deleteProfilePicture: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			await userModel.deleteProfilePicture(userId);
 
-	listAllBlocks: async (request, reply) => {
-		const {
-			user: { id: userId },
-		} = request.user;
-		const blocks = await userModel.listAllBlocks(userId);
+			reply.send({ message: "Profile picture removed successfully" });
+		},
 
-		reply.send(blocks);
-	},
+		listAllBlocks: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			const blocks = await userModel.listAllBlocks(userId);
 
-	blockUser: async (request, reply) => {
-		const { blockRecipientId } = request.body;
-		const {
-			user: { id: userId },
-		} = request.user;
+			reply.send(blocks);
+		},
 
-		const block = await blockService.blockUser(userId, blockRecipientId);
-		reply.send(block);
-	},
+		blockUser: async (request, reply) => {
+			const { blockRecipientId } = request.body;
+			const {
+				user: { id: userId },
+			} = request.user;
 
-	unblockUser: async (request, reply) => {
-		const { blockId } = request.params;
-		const {
-			user: { id: userId },
-		} = request.user;
-		const unblockedUserId = await blockService.unblockUser(userId, blockId);
+			const block = await blockService.blockUser(
+				userId,
+				blockRecipientId
+			);
+			reply.send(block);
+		},
 
-		reply.send({
-			msg: `Successfuly unblocked user with id ${unblockedUserId}`,
-		});
-	},
+		unblockUser: async (request, reply) => {
+			const { blockId } = request.params;
+			const {
+				user: { id: userId },
+			} = request.user;
+			const unblockedUserId = await blockService.unblockUser(
+				userId,
+				blockId
+			);
 
-	listUserMatches: async (request, reply) => {
-		const { userId } = request.params;
-		const { limit = 10, offset = 0 } = request.query;
+			reply.send({
+				msg: `Successfuly unblocked user with id ${unblockedUserId}`,
+			});
+		},
 
-		const matches = await matchModel.listUserMatches(userId, limit, offset);
+		listUserMatches: async (request, reply) => {
+			const { userId } = request.params;
+			const { limit, page, match_type } = request.query;
 
-		return reply.status(StatusCodes.OK).send(matches);
-	},
-});
+			const matches = await matchService.listUserMatches(
+				userId,
+				limit,
+				page,
+				match_type
+			);
+			return reply.status(200).send(matches);
+		},
+	};
+};

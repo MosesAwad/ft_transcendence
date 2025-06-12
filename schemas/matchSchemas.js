@@ -3,13 +3,21 @@ const createMatchOpts = {
 		body: {
 			type: "object",
 			properties: {
+				player1_id: { type: "number", nullable: true },
+				player2_id: { type: "number", nullable: true },
+				player1_name: { type: "string" },
 				player2_name: { type: "string" },
 				match_type: {
 					type: "string",
-					enum: ["1v1", "1vAi"],
+					enum: ["1v1", "1vAi", "tournament"],
 				},
 			},
-			required: ["player2_name", "match_type"],
+			required: [
+				"player1_id",
+				"player2_id",
+				"player2_name",
+				"match_type",
+			],
 		},
 	},
 };
@@ -37,19 +45,17 @@ const listUserMatchesOpts = {
 				userId: { type: "number" },
 			},
 		},
-		query: {
+		querystring: {
 			type: "object",
+			required: ["page", "limit"],
 			properties: {
-				page: {
-					type: "number",
-					minimum: 1,
-				},
-				limit: {
-					type: "number",
-					minimum: 1,
+				page: { type: "number", minimum: 1 },
+				limit: { type: "number", minimum: 1 },
+				match_type: {
+					type: "string",
+					enum: ["1v1", "1vAi", "tournament"],
 				},
 			},
-			required: ["page", "limit"],
 		},
 	},
 };

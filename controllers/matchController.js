@@ -1,37 +1,68 @@
 const { StatusCodes } = require("http-status-codes");
 
-module.exports = (matchModel) => ({
-	createMatch: async (request, reply) => {
-		const { user } = request.user;
-		const { player2_name, match_type } = request.body;
+module.exports = (matchModel, userModel) => {
+	const matchService = require("../services/matchService")(
+		matchModel,
+		userModel
+	);
 
-		const newMatch = await matchModel.createMatch({
-			player1_name: user.username,
-			player2_name,
-			match_type,
-		});
+	return {
+		createMatch: async (request, reply) => {
+			const { id: currentUserId } = request.user.user;
+			const {
+				player1_id,
+				player2_id,
+				player1_name,
+				player2_name,
+				match_type,
+			} = request.body;
 
-		return reply.status(StatusCodes.CREATED).send({ match: newMatch });
-	},
+			// Validate and prepare player names
+			const {
+				player1_name: finalPlayer1Name,
+				player2_name: finalPlayer2Name,
+			} = await matchService.validateAndPrepareMatchPlayers({
+				player1_id,
+				player2_id,
+				player1_name,
+				player2_name,
+				currentUserId,
+			});
 
-	updateMatchResult: async (request, reply) => {
-		const { matchId, player1_score, player2_score } = request.body;
+			const match = await matchModel.createMatch({
+				player1_id,
+				player2_id,
+				player1_name: finalPlayer1Name,
+				player2_name: finalPlayer2Name,
+				match_type,
+			});
 
-		const updatedMatch = await matchModel.finalizeMatch(
-			matchId,
-			player1_score,
-			player2_score
-		);
+			return reply.status(StatusCodes.CREATED).send({ match });
+		},
 
-		return reply.status(StatusCodes.OK).send({ match: updatedMatch });
-	},
+		updateMatchResult: async (request, reply) => {
+			const { matchId, player1_score, player2_score } = request.body;
 
-	listUserMatches: async (request, reply) => {
-		const { userId } = request.params;
-		const { limit , offset } = request.query;
+			const updatedMatch = await matchModel.finalizeMatch(
+				matchId,
+				player1_score,
+				player2_score
+			);
 
-		const matches = await matchModel.listUserMatches(userId, limit, offset);
+			return reply.status(StatusCodes.OK).send({ match: updatedMatch });
+		},
 
-		return reply.status(StatusCodes.OK).send(matches);
-	},
-});
+		listUserMatches: async (request, reply) => {
+			const { userId } = request.params;
+			const { limit, page, match_type } = request.query;
+
+			const matches = await matchService.listUserMatches(
+				userId,
+				limit,
+				page,
+				match_type
+			);
+			return reply.status(StatusCodes.OK).send(matches);
+		},
+	};
+};

@@ -6,6 +6,8 @@ class Match {
 	}
 
 	async createMatch({
+		player1_id,
+		player2_id,
 		player1_name,
 		player2_name,
 		match_type,
@@ -13,6 +15,8 @@ class Match {
 	}) {
 		const [match] = await this.db("matches")
 			.insert({
+				player1_id,
+				player2_id,
 				player1_name,
 				player2_name,
 				match_type,
@@ -52,58 +56,30 @@ class Match {
 		return match;
 	}
 
-	async listMatches(filters = {}) {
-		const query = this.db("matches");
+	async listUserMatches(username, limit, page, match_type) {
+		const query = this.db("matches").where(function () {
+			this.where("player1_name", username).orWhere(
+				"player2_name",
+				username
+			);
+		});
 
-		if (filters.match_type) {
-			query.where({ match_type: filters.match_type });
+		if (match_type) {
+			query.andWhere({ match_type });
 		}
 
-		if (filters.tournament_id) {
-			query.where({ tournament_id: filters.tournament_id });
-		}
-
-		if (filters.status) {
-			query.where({ status: filters.status });
-		}
-
-		const matches = await query.orderBy("created_at", "desc");
-		return matches;
-	}
-
-	async listUserMatches(userId, limit = 10, offset = 0) {
-		const user = await this.db("users").where({ id: userId }).first();
-
-		if (!user) {
-			throw new CustomError.NotFoundError(`No user with id ${userId}`);
-		}
-
-		const matches = await this.db("matches")
-			.where(function () {
-				this.where("player1_name", user.username).orWhere(
-					"player2_name",
-					user.username
-				);
-			})
+		const matches = await query
 			.orderBy("created_at", "desc")
 			.limit(limit)
-			.offset(offset);
+			.offset((page - 1) * limit);
 
-		const total = await this.db("matches")
-			.where(function () {
-				this.where("player1_name", user.username).orWhere(
-					"player2_name",
-					user.username
-				);
-			})
-			.count("* as count")
-			.first();
+		const total = await query.clone().count("* as count").first();
 
 		return {
 			matches,
 			total: total.count,
 			limit,
-			offset,
+			page,
 		};
 	}
 }

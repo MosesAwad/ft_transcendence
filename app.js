@@ -180,6 +180,7 @@ const start = async () => {
 		});
 		fastify.register(matchRoutes, {
 			matchModel,
+			userModel,
 			prefix: "/api/v1/matches",
 		});
 

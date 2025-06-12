@@ -17,10 +17,8 @@ async function userRoutes(fastify, options) {
 		unblockUser,
 		uploadProfilePicture,
 		deleteProfilePicture,
-	} = require("../controllers/userController")(userModel, blockService);
-	const { listUserMatches } = require("../controllers/matchController")(
-		matchModel
-	);
+		listUserMatches,
+	} = require("../controllers/userController")(userModel, blockService, matchModel);
 
 	fastify.get(
 		"/showUser",
