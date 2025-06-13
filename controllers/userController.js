@@ -30,8 +30,9 @@ module.exports = (userModel, blockService, matchModel) => {
 		listSingleUser: async (request, reply) => {
 			const { userId } = request.params;
 			const user = await userModel.listSingleUser(userId);
+			const stats = await matchService.getUserStats(userId);
 
-			reply.send(user);
+			reply.send({ ...user, stats });
 		},
 
 		uploadProfilePicture: async (request, reply) => {

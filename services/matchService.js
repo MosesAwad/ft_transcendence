@@ -87,4 +87,41 @@ module.exports = (matchModel, userModel) => ({
 		);
 		return matches;
 	},
+
+	getUserStats: async (userId) => {
+		const user = await userModel.findById(userId);
+		if (!user) {
+			throw new CustomError.NotFoundError(`No user with id ${userId}`);
+		}
+
+		const matches = await matchModel.db("matches").where(function () {
+			this.where("player1_name", user.username).orWhere(
+				"player2_name",
+				user.username
+			);
+		});
+
+		const stats = {
+			totalGames: matches.length,
+			cancelledGames: matches.filter((m) => m.status === "cancelled")
+				.length,
+			wins: 0,
+			losses: 0,
+		};
+
+		matches.forEach((match) => {
+			if (match.status === "finished") {
+				const isPlayer1 = match.player1_name === user.username;
+				const player1Won = match.player1_score > match.player2_score;
+
+				if ((isPlayer1 && player1Won) || (!isPlayer1 && !player1Won)) {
+					stats.wins++;
+				} else {
+					stats.losses++;
+				}
+			}
+		});
+
+		return stats;
+	},
 });
