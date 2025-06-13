@@ -33,7 +33,7 @@ class Match {
 			throw new CustomError.NotFoundError(`No match with id ${matchId}`);
 		}
 
-		if (match.player1_id !== currentUserId) {
+		if (match.player1_id !== currentUserId && match.player2_id !== currentUserId) {
 			throw new CustomError.UnauthorizedError(
 				"You are not authorized to patch this match's results"
 			);
