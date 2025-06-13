@@ -42,12 +42,17 @@ module.exports = (matchModel, userModel) => {
 		},
 
 		updateMatchResult: async (request, reply) => {
-			const { matchId, player1_score, player2_score } = request.body;
+			const {
+				user: { id: currentUserId },
+			} = request.user;
+			const { matchId } = request.params;
+			const { player1_score, player2_score } = request.body;
 
 			const updatedMatch = await matchModel.finalizeMatch(
 				matchId,
 				player1_score,
-				player2_score
+				player2_score,
+				currentUserId
 			);
 
 			return reply.status(StatusCodes.OK).send({ match: updatedMatch });

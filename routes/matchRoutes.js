@@ -19,7 +19,7 @@ async function matchRoutes(fastify, options) {
 	);
 
 	fastify.patch(
-		"/",
+		"/:matchId",
 		{
 			preHandler: fastify.authenticate,
 			schema: updateMatchOpts.schema,

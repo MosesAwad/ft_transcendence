@@ -27,11 +27,22 @@ class Match {
 		return match;
 	}
 
-	async finalizeMatch(matchId, player1_score, player2_score) {
+	async finalizeMatch(matchId, player1_score, player2_score, currentUserId) {
 		const match = await this.db("matches").where({ id: matchId }).first();
-
 		if (!match) {
 			throw new CustomError.NotFoundError(`No match with id ${matchId}`);
+		}
+
+		if (match.player1_id !== currentUserId) {
+			throw new CustomError.UnauthorizedError(
+				"You are not authorized to patch this match's results"
+			);
+		}
+
+		if (match.status === "finished") {
+			throw new CustomError.BadRequestError(
+				"Match has already been finalized"
+			);
 		}
 
 		const [updatedMatch] = await this.db("matches")

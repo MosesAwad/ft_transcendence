@@ -24,14 +24,20 @@ const createMatchOpts = {
 
 const updateMatchOpts = {
 	schema: {
-		body: {
+		params: {
 			type: "object",
 			properties: {
 				matchId: { type: "number" },
+			},
+			required: ["matchId"],
+		},
+		body: {
+			type: "object",
+			properties: {
 				player1_score: { type: "number", minimum: 0 },
 				player2_score: { type: "number", minimum: 0 },
 			},
-			required: ["matchId", "player1_score", "player2_score"],
+			required: ["player1_score", "player2_score"],
 		},
 	},
 };
