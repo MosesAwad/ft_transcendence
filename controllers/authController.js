@@ -435,12 +435,33 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			}
 		}
 
-		// Handle deviceId misconfugration message
+		// Handle schema validation errors
 		if (err.code === "FST_ERR_VALIDATION") {
-			if (err.validation[0]?.instancePath === "/deviceId") {
-				customError.msg = "deviceId must be in UUID format";
+			customError.statusCode = StatusCodes.BAD_REQUEST;
+			const validation = err.validation[0];
+			if (validation) {
+				const field = validation.instancePath.slice(1); // Remove leading slash
+				switch (field) {
+					case "username":
+						if (validation.keyword === "pattern") {
+							customError.msg = "Username cannot contain spaces";
+						} else if (validation.keyword === "minLength") {
+							customError.msg =
+								"Username must be at least 3 characters long";
+						} else if (validation.keyword === "maxLength") {
+							customError.msg =
+								"Username cannot be longer than 50 characters";
+						}
+						break;
+					case "deviceId":
+						customError.msg = "deviceId must be in UUID format";
+						break;
+					default:
+						customError.msg = err.message;
+				}
 			}
 		}
+
 		reply.status(customError.statusCode).send({ error: customError.msg });
 	},
 });

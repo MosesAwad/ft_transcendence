@@ -45,17 +45,23 @@ const listUserMatchesOpts = {
 				userId: { type: "number" },
 			},
 		},
-		querystring: {
+		query: {
 			type: "object",
-			required: ["page", "limit"],
 			properties: {
-				page: { type: "number", minimum: 1 },
-				limit: { type: "number", minimum: 1 },
+				page: {
+					type: "number",
+					minimum: 1,
+				},
+				limit: {
+					type: "number",
+					minimum: 1,
+				},
 				match_type: {
 					type: "string",
 					enum: ["1v1", "1vAi", "tournament"],
 				},
 			},
+			required: ["page", "limit"],
 		},
 	},
 };
