@@ -21,6 +21,7 @@ const userRoutes = require("./routes/userRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const matchRoutes = require("./routes/matchRoutes");
+const tournamentRoutes = require("./routes/tournamentRoutes");
 
 const User = require("./models/User");
 const Token = require("./models/Token");
@@ -182,6 +183,12 @@ const start = async () => {
 			matchModel,
 			userModel,
 			prefix: "/api/v1/matches",
+		});
+		fastify.register(tournamentRoutes, {
+			tournamentModel,
+			matchModel,
+			userModel,
+			prefix: "/api/v1/tournaments",
 		});
 
 		// 7. Start server with dual-stack support

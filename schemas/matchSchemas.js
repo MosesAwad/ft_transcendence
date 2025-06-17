@@ -9,7 +9,7 @@ const createMatchOpts = {
 				player2_name: { type: "string" },
 				match_type: {
 					type: "string",
-					enum: ["1v1", "1vAi", "tournament"],
+					enum: ["1v1", "1vAi"],
 				},
 			},
 			required: [

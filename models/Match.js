@@ -13,6 +13,20 @@ class Match {
 		match_type,
 		tournament_id = null,
 	}) {
+		// // Reject tournament matches - should use tournament route instead
+		// if (tournament_id) {
+		// 	throw new CustomError.BadRequestError(
+		// 		"Tournament matches should be created through /api/v1/tournaments/:tournamentId/matches endpoint"
+		// 	);
+		// }
+
+		// // Reject tournament match_type - should use tournament route instead
+		// if (match_type === "tournament") {
+		// 	throw new CustomError.BadRequestError(
+		// 		"Tournament matches should be created through /api/v1/tournaments/:tournamentId/matches endpoint"
+		// 	);
+		// }
+
 		const [match] = await this.db("matches")
 			.insert({
 				player1_id,
@@ -20,7 +34,7 @@ class Match {
 				player1_name,
 				player2_name,
 				match_type,
-				tournament_id,
+				tournament_id
 			})
 			.returning("*");
 
@@ -33,7 +47,10 @@ class Match {
 			throw new CustomError.NotFoundError(`No match with id ${matchId}`);
 		}
 
-		if (match.player1_id !== currentUserId && match.player2_id !== currentUserId) {
+		if (
+			match.player1_id !== currentUserId &&
+			match.player2_id !== currentUserId
+		) {
 			throw new CustomError.UnauthorizedError(
 				"You are not authorized to patch this match's results"
 			);
@@ -83,6 +100,15 @@ class Match {
 			.orderBy("created_at", "desc")
 			.limit(limit)
 			.offset((page - 1) * limit);
+
+		return matches;
+	}
+
+	// Helper function for tournamentService
+	async getTournamentMatches(tournamentId) {
+		const matches = await this.db("matches")
+			.where({ tournament_id: tournamentId })
+			.orderBy("created_at", "asc");
 
 		return matches;
 	}

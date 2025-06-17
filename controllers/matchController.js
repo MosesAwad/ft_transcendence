@@ -15,6 +15,7 @@ module.exports = (matchModel, userModel) => {
 				player1_name,
 				player2_name,
 				match_type,
+				tournament_id,
 			} = request.body;
 
 			// Validate and prepare player names
@@ -27,7 +28,7 @@ module.exports = (matchModel, userModel) => {
 				player1_name,
 				player2_name,
 				currentUserId,
-				match_type
+				match_type,
 			});
 
 			const match = await matchModel.createMatch({
@@ -36,6 +37,7 @@ module.exports = (matchModel, userModel) => {
 				player1_name: finalPlayer1Name,
 				player2_name: finalPlayer2Name,
 				match_type,
+				tournament_id
 			});
 
 			return reply.status(StatusCodes.CREATED).send({ match });

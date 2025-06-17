@@ -26,15 +26,7 @@ class Tournament {
 			);
 		}
 
-		// Get all matches associated with this tournament
-		const matches = await this.db("matches")
-			.where({ tournament_id: tournamentId })
-			.orderBy("created_at", "asc");
-
-		return {
-			...tournament,
-			matches,
-		};
+		return tournament;
 	}
 
 	async listTournaments() {
@@ -42,21 +34,7 @@ class Tournament {
 			.select("*")
 			.orderBy("created_at", "desc");
 
-		// For each tournament, get the count of matches
-		const tournamentsWithCounts = await Promise.all(
-			tournaments.map(async (tournament) => {
-				const [{ count }] = await this.db("matches")
-					.where({ tournament_id: tournament.id })
-					.count();
-
-				return {
-					...tournament,
-					match_count: parseInt(count),
-				};
-			})
-		);
-
-		return tournamentsWithCounts;
+		return tournaments;
 	}
 }
 
