@@ -5,11 +5,24 @@ const { pipeline } = require("stream");
 const { BadRequestError } = require("../errors");
 const { StatusCodes } = require("http-status-codes");
 
-module.exports = (userModel, blockService, matchModel) => {
+module.exports = (userModel, blockService, matchModel, onlineUsers) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
 		userModel
 	);
+
+	// Helper function to check if a user is online
+	const isUserOnline = (userId) => {
+		const userSocketsSet = onlineUsers.get(Number(userId));
+		const isOnline = userSocketsSet ? userSocketsSet.size > 0 : false;
+		console.log(
+			`Checking if user ${userId} is online:`,
+			isOnline,
+			"Socket set:",
+			userSocketsSet
+		);
+		return isOnline;
+	};
 
 	return {
 		listAllUsers: async (request, reply) => {
@@ -31,8 +44,11 @@ module.exports = (userModel, blockService, matchModel) => {
 			const { userId } = request.params;
 			const user = await userModel.listSingleUser(userId);
 			const stats = await matchService.getUserStats(userId);
+			const isOnline = isUserOnline(userId);
 
-			reply.send({ ...user, stats });
+			console.log(`User ${userId} online status:`, isOnline);
+
+			reply.send({ ...user, stats, isOnline });
 		},
 
 		uploadProfilePicture: async (request, reply) => {

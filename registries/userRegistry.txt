@@ -1,0 +1,4 @@
+Event names:
+* userStatusChange
+
+Use this event to listen for changes in the online status of a user so that you can update the display in real-time.

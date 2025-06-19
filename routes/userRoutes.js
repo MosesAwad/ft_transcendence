@@ -8,7 +8,7 @@ const {
 const { listUserMatchesOpts } = require("../schemas/matchSchemas");
 
 async function userRoutes(fastify, options) {
-	const { userModel, blockService, matchModel } = options;
+	const { userModel, blockService, matchModel, onlineUsers } = options;
 	const {
 		listAllUsers,
 		listSingleUser,
@@ -18,7 +18,12 @@ async function userRoutes(fastify, options) {
 		uploadProfilePicture,
 		deleteProfilePicture,
 		listUserMatches,
-	} = require("../controllers/userController")(userModel, blockService, matchModel);
+	} = require("../controllers/userController")(
+		userModel,
+		blockService,
+		matchModel,
+		onlineUsers
+	);
 
 	fastify.get(
 		"/showUser",

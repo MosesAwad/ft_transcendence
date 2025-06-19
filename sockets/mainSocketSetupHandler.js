@@ -6,8 +6,7 @@ const onlineUsers = new Map();
 
 function handleSocketSetup(fastify) {
 	fastify.io.on("connection", (socket) => {
-
-		console.log('Client connected from', socket.handshake.address);
+		console.log("Client connected from", socket.handshake.address);
 
 		const rawCookieHeader = socket.handshake.headers.cookie;
 		if (!rawCookieHeader) {
@@ -34,10 +33,23 @@ function handleSocketSetup(fastify) {
 			const userId = payload.user.id;
 
 			if (!onlineUsers.has(userId)) {
-				onlineUsers.set(userId, new Set());	// Note 1
+				onlineUsers.set(userId, new Set()); // Note 1
 			}
 			onlineUsers.get(userId).add(socket.id);
 			console.log(`User ${userId} connected with socket ${socket.id}`);
+			console.log(
+				"Current online users:",
+				Array.from(onlineUsers.entries()).map(
+					([userId, sockets]) =>
+						`User ${userId}: ${sockets.size} connections`
+				)
+			);
+
+			// Broadcast to all sockets that this user is now online
+			fastify.io.emit("userStatusChange", {
+				userId: userId,
+				isOnline: true,
+			});
 
 			// Set up the "joinRoom" event socket handler
 			setupChatSocket(userId, socket);
@@ -50,6 +62,12 @@ function handleSocketSetup(fastify) {
 					if (userSockets.size === 0) {
 						// If userSockets is now empty as a result of the delete, clean up the empty set from the onlineUsers map
 						onlineUsers.delete(userId);
+
+						// Broadcast to all sockets that this user is now offline
+						fastify.io.emit("userStatusChange", {
+							userId: userId,
+							isOnline: false,
+						});
 					}
 				}
 				console.log(
@@ -87,4 +105,3 @@ module.exports = {
 			Useful when 		| Order matters / duplicates okay 	 | Unique values, fast ops
 
 */
-

@@ -167,6 +167,7 @@ const start = async () => {
 			userModel,
 			blockService,
 			matchModel,
+			onlineUsers,
 			prefix: "/api/v1/users",
 		});
 		fastify.register(notificationRoutes, {

@@ -2,6 +2,11 @@ const socket = io("http://localhost:3000", {
 	withCredentials: true,
 });
 
+// Add event handler for socket connection established
+socket.on("connect", () => {
+	console.log("Socket connection established");
+});
+
 async function checkAuthAndLoadProfile() {
 	const res = await fetchWithAutoRefresh(`${baseURL}/users/showUser`);
 	if (!res.ok) {
@@ -37,6 +42,19 @@ async function loadProfileData(userId) {
 		document.getElementById("email").textContent = userData.email;
 		document.getElementById("profileImage").src =
 			userData.profile_picture || "/uploads/default.png";
+
+		// Update online status indicator
+		const onlineStatus = document.getElementById("onlineStatus");
+		console.log("User online status:", userData.isOnline);
+		if (userData.isOnline) {
+			onlineStatus.classList.remove("offline");
+			onlineStatus.classList.add("online");
+			onlineStatus.title = "Online";
+		} else {
+			onlineStatus.classList.remove("online");
+			onlineStatus.classList.add("offline");
+			onlineStatus.title = "Offline";
+		}
 
 		// Show/hide profile actions based on ownership
 		const currentUser = await fetchWithAutoRefresh(
@@ -452,6 +470,31 @@ socket.on("friendRequestInform", () => {
 socket.on("friendRequestAccept", () => {
 	const userId = new URLSearchParams(window.location.search).get("userId");
 	loadProfileData(userId);
+});
+
+// Listen for user status changes
+socket.on("userStatusChange", (data) => {
+	const currentProfileUserId = new URLSearchParams(
+		window.location.search
+	).get("userId");
+
+	console.log("Status change event received:", data);
+	console.log("Current profile user ID:", currentProfileUserId);
+
+	// If this status change is for the user we're currently viewing
+	if (parseInt(currentProfileUserId) === data.userId) {
+		console.log("Updating status for current profile user");
+		const onlineStatus = document.getElementById("onlineStatus");
+		if (data.isOnline) {
+			onlineStatus.classList.remove("offline");
+			onlineStatus.classList.add("online");
+			onlineStatus.title = "Online";
+		} else {
+			onlineStatus.classList.remove("online");
+			onlineStatus.classList.add("offline");
+			onlineStatus.title = "Offline";
+		}
+	}
 });
 
 // Initialize
