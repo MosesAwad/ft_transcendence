@@ -140,7 +140,7 @@ const start = async () => {
 			},
 		}); // Attach Socket.io to Fastify's server instance
 		fastify.decorate("io", io);
-		handleSocketSetup(fastify);
+		handleSocketSetup(fastify, friendModel);
 
 		// 5. Initialize services (after Socket.io setup)
 		const blockService = require("./services/blockService")(
@@ -168,6 +168,7 @@ const start = async () => {
 			blockService,
 			matchModel,
 			onlineUsers,
+			friendModel,
 			prefix: "/api/v1/users",
 		});
 		fastify.register(notificationRoutes, {

@@ -5,7 +5,13 @@ const { pipeline } = require("stream");
 const { BadRequestError } = require("../errors");
 const { StatusCodes } = require("http-status-codes");
 
-module.exports = (userModel, blockService, matchModel, onlineUsers) => {
+module.exports = (
+	userModel,
+	blockService,
+	matchModel,
+	onlineUsers,
+	friendModel
+) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
 		userModel
@@ -42,11 +48,32 @@ module.exports = (userModel, blockService, matchModel, onlineUsers) => {
 
 		listSingleUser: async (request, reply) => {
 			const { userId } = request.params;
+			const {
+				user: { id: requesterId },
+			} = request.user;
+
 			const user = await userModel.listSingleUser(userId);
 			const stats = await matchService.getUserStats(userId);
-			const isOnline = isUserOnline(userId);
 
-			console.log(`User ${userId} online status:`, isOnline);
+			// Check if there's a block relationship between the users
+			const blockStatus = await friendModel.getBlockStatus(
+				requesterId,
+				userId
+			);
+
+			// Only show online status if there's no block in either direction
+			let isOnline = false;
+			if (
+				!blockStatus.user1BlockedUser2 &&
+				!blockStatus.user2BlockedUser1
+			) {
+				isOnline = isUserOnline(userId);
+				console.log(`User ${userId} online status:`, isOnline);
+			} else {
+				console.log(
+					`Online status hidden due to block relationship between users ${requesterId} and ${userId}`
+				);
+			}
 
 			reply.send({ ...user, stats, isOnline });
 		},

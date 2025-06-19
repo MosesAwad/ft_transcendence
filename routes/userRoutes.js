@@ -8,7 +8,8 @@ const {
 const { listUserMatchesOpts } = require("../schemas/matchSchemas");
 
 async function userRoutes(fastify, options) {
-	const { userModel, blockService, matchModel, onlineUsers } = options;
+	const { userModel, blockService, matchModel, onlineUsers, friendModel } =
+		options;
 	const {
 		listAllUsers,
 		listSingleUser,
@@ -22,7 +23,8 @@ async function userRoutes(fastify, options) {
 		userModel,
 		blockService,
 		matchModel,
-		onlineUsers
+		onlineUsers,
+		friendModel
 	);
 
 	fastify.get(

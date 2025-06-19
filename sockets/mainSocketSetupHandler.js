@@ -4,7 +4,7 @@ const { setupChatSocket } = require("./chatSocketSetupHandler");
 
 const onlineUsers = new Map();
 
-function handleSocketSetup(fastify) {
+function handleSocketSetup(fastify, friendModel) {
 	fastify.io.on("connection", (socket) => {
 		console.log("Client connected from", socket.handshake.address);
 
@@ -45,11 +45,8 @@ function handleSocketSetup(fastify) {
 				)
 			);
 
-			// Broadcast to all sockets that this user is now online
-			fastify.io.emit("userStatusChange", {
-				userId: userId,
-				isOnline: true,
-			});
+			// Broadcast to non-blocked users that this user is now online
+			emitStatusChangeToNonBlockedUsers(userId, true);
 
 			// Set up the "joinRoom" event socket handler
 			setupChatSocket(userId, socket);
@@ -63,11 +60,8 @@ function handleSocketSetup(fastify) {
 						// If userSockets is now empty as a result of the delete, clean up the empty set from the onlineUsers map
 						onlineUsers.delete(userId);
 
-						// Broadcast to all sockets that this user is now offline
-						fastify.io.emit("userStatusChange", {
-							userId: userId,
-							isOnline: false,
-						});
+						// Broadcast to non-blocked users that this user is now offline
+						emitStatusChangeToNonBlockedUsers(userId, false);
 					}
 				}
 				console.log(
@@ -80,6 +74,52 @@ function handleSocketSetup(fastify) {
 		}
 	});
 }
+
+// Helper function to emit status changes safely (respecting blocks)
+const emitStatusChangeToNonBlockedUsers = async (userId, isOnline) => {
+	// Get all online users
+	const onlineUserIds = Array.from(onlineUsers.keys());
+
+	for (const onlineUserId of onlineUserIds) {
+		// Skip self
+		if (onlineUserId === userId) continue;
+
+		// Check block status
+		try {
+			const blockStatus = await friendModel.getBlockStatus(
+				userId,
+				onlineUserId
+			);
+
+			// If either user blocked the other, don't send status update
+			if (
+				blockStatus.user1BlockedUser2 ||
+				blockStatus.user2BlockedUser1
+			) {
+				console.log(
+					`Skipping status update from ${userId} to ${onlineUserId} due to block`
+				);
+				continue;
+			}
+
+			// Send status update to this user
+			const userSockets = onlineUsers.get(onlineUserId);
+			if (userSockets) {
+				userSockets.forEach((socketId) => {
+					fastify.io.to(socketId).emit("userStatusChange", {
+						userId: userId,
+						isOnline: isOnline,
+					});
+				});
+			}
+		} catch (err) {
+			console.error(
+				`Error checking block status between ${userId} and ${onlineUserId}:`,
+				err
+			);
+		}
+	}
+};
 
 module.exports = {
 	onlineUsers,
