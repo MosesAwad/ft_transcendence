@@ -165,6 +165,49 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 		};
 	};
 
+	// Validate real player requirement for tournament matches
+	const validateRealPlayerRequirement = async (
+		tournamentId,
+		player1_id,
+		player2_id
+	) => {
+		const tournament = await tournamentModel.getTournament(tournamentId);
+		const existingMatches = await matchModel.getTournamentMatches(
+			tournamentId
+		);
+		const currentMatchCount = existingMatches.length;
+
+		// Determine if we're creating the match that completes the kickoff stage
+		// For 4-player tournaments, the 2nd match completes the kickoff (indexes 0-1)
+		// For 8-player tournaments, the 4th match completes the kickoff (indexes 0-3)
+		const isCompletingKickoffStage =
+			(tournament.player_capacity === 4 && currentMatchCount === 1) ||
+			(tournament.player_capacity === 8 && currentMatchCount === 3);
+
+		// Only perform this validation if we're completing the kickoff stage
+		if (isCompletingKickoffStage) {
+			// Check if any player in existing matches is a real player (has an ID)
+			const hasRealPlayerInExistingMatches = existingMatches.some(
+				(match) =>
+					match.player1_id !== null || match.player2_id !== null
+			);
+
+			// Check if any player in current match is a real player
+			const hasRealPlayerInCurrentMatch =
+				player1_id !== null || player2_id !== null;
+
+			// If no real players in existing or current match, reject
+			if (
+				!hasRealPlayerInExistingMatches &&
+				!hasRealPlayerInCurrentMatch
+			) {
+				throw new CustomError.BadRequestError(
+					`Tournament must have at least one authenticated player by the end of the kickoff round`
+				);
+			}
+		}
+	};
+
 	return {
 		// Get tournament with all its matches
 		getTournamentWithMatches: async (tournamentId) => {
@@ -269,7 +312,6 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			const tournament = await tournamentModel.getTournament(
 				tournamentId
 			);
-
 			if (!tournament) {
 				throw new CustomError.NotFoundError(
 					`No tournament with id ${tournamentId}`
@@ -286,41 +328,12 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 				);
 			}
 
-			// Get existing matches to check for real players
-			const existingMatches = await matchModel.getTournamentMatches(
-				tournamentId
+			// Validate the real player requirement
+			await validateRealPlayerRequirement(
+				tournamentId,
+				player1_id,
+				player2_id
 			);
-			const currentMatchCount = existingMatches.length;
-
-			// Determine if we're creating the match that completes the kickoff stage
-			// For 4-player tournaments, the 2nd match completes the kickoff (indexes 0-1)
-			// For 8-player tournaments, the 4th match completes the kickoff (indexes 0-3)
-			const isCompletingKickoffStage =
-				(tournament.player_capacity === 4 && currentMatchCount === 1) ||
-				(tournament.player_capacity === 8 && currentMatchCount === 3);
-
-			// If we're completing the kickoff stage, check for at least one real player
-			if (isCompletingKickoffStage) {
-				// Check if any player in existing matches is a real player (has an ID)
-				const hasRealPlayerInExistingMatches = existingMatches.some(
-					(match) =>
-						match.player1_id !== null || match.player2_id !== null
-				);
-
-				// Check if any player in current match is a real player
-				const hasRealPlayerInCurrentMatch =
-					player1_id !== null || player2_id !== null;
-
-				// If no real players in existing or current match, reject
-				if (
-					!hasRealPlayerInExistingMatches &&
-					!hasRealPlayerInCurrentMatch
-				) {
-					throw new CustomError.BadRequestError(
-						`Tournament must have at least one authenticated player by the end of the kickoff round`
-					);
-				}
-			}
 
 			// Use tournament-specific validation
 			const {
@@ -346,11 +359,6 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			});
 
 			return match;
-		},
-
-		// Check if a tournament is complete (has the maximum number of matches)
-		getTournamentStatus: async (tournamentId) => {
-			return checkTournamentComplete(tournamentId);
 		},
 	};
 };
