@@ -285,7 +285,7 @@ class User {
 
 	async updateProfile(
 		userId,
-		{ username, email, password, currentPassword }
+		{ username, email, newPassword, currentPassword }
 	) {
 		// Get current user data to check current values
 		const currentUser = await this.findById(userId);
@@ -300,7 +300,7 @@ class User {
 		const updateData = {};
 
 		// If changing password, verify current password
-		if (password) {
+		if (newPassword) {
 			if (!currentPassword) {
 				throw new CustomError.BadRequestError(
 					"Current password is required to set a new password"
@@ -318,7 +318,7 @@ class User {
 			}
 
 			const salt = await bcrypt.genSalt(10);
-			updateData.password = await bcrypt.hash(password, salt);
+			updateData.password = await bcrypt.hash(newPassword, salt);
 			updatedFields.push("password");
 		}
 

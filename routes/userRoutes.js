@@ -12,6 +12,7 @@ async function userRoutes(fastify, options) {
 	const { userModel, blockService, matchModel, onlineUsers, friendModel } =
 		options;
 	const {
+		errorHandler,
 		listAllUsers,
 		listSingleUser,
 		listAllBlocks,
@@ -28,6 +29,9 @@ async function userRoutes(fastify, options) {
 		onlineUsers,
 		friendModel
 	);
+
+	// Set the error handler
+	fastify.setErrorHandler(errorHandler);
 
 	fastify.get(
 		"/showUser",

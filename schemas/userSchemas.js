@@ -89,6 +89,7 @@ const updateProfileOpts = {
 					type: "string",
 					minLength: 3,
 					maxLength: 50,
+					pattern: "^[\\S]+$", // No whitespace allowed
 				},
 				email: {
 					type: "string",

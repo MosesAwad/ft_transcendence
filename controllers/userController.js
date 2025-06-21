@@ -31,6 +31,86 @@ module.exports = (
 	};
 
 	return {
+		errorHandler: (err, request, reply) => {
+			let customError = {
+				statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+				msg: err.message || "Something went wrong, try again later",
+			};
+
+			// console.log(err);
+
+			// Handle schema validation errors
+			if (err.code === "FST_ERR_VALIDATION") {
+				customError.statusCode = StatusCodes.BAD_REQUEST;
+
+				// Special case for updateProfile
+				if (
+					err.validation &&
+					err.validation.some((v) => v.keyword === "anyOf")
+				) {
+					customError.msg =
+						"Please provide at least one field to update: username, email, or both currentPassword AND newPassword together to update your password";
+				} else {
+					const validation = err.validation && err.validation[0];
+					if (validation) {
+						const field = validation.instancePath.slice(1); // Remove leading slash
+
+						// Special case for missing either currentPassword or newPassword
+						if (
+							field === "currentPassword" &&
+							validation.keyword === "required"
+						) {
+							customError.msg =
+								"Current password is required when setting a new password";
+						} else if (
+							field === "newPassword" &&
+							validation.keyword === "required"
+						) {
+							customError.msg =
+								"New password is required when providing current password";
+						} else
+							switch (field) {
+								case "username":
+									if (validation.keyword === "pattern") {
+										customError.msg =
+											"Username cannot contain spaces";
+									} else if (
+										validation.keyword === "minLength"
+									) {
+										customError.msg =
+											"Username must be at least 3 characters long";
+									} else if (
+										validation.keyword === "maxLength"
+									) {
+										customError.msg =
+											"Username cannot be longer than 50 characters";
+									}
+									break;
+								case "email":
+									if (validation.keyword === "format") {
+										customError.msg =
+											"Please provide a valid email address";
+									}
+									break;
+								case "currentPassword":
+								case "newPassword":
+									if (validation.keyword === "minLength") {
+										customError.msg =
+											"Password must be at least 6 characters long";
+									}
+									break;
+								default:
+									customError.msg = err.message;
+							}
+					}
+				}
+			}
+
+			reply
+				.status(customError.statusCode)
+				.send({ error: customError.msg });
+		},
+
 		listAllUsers: async (request, reply) => {
 			const { search, page, limit } = request.query;
 			const {
@@ -164,12 +244,13 @@ module.exports = (
 				await userModel.updateProfile(userId, {
 					username,
 					email,
-					password: newPassword,
+					newPassword,
 					currentPassword,
 				});
 
 			// Create a dynamic success message based on what was updated
-			let message = "Updated: " + updatedFields.join(", ") + " successfully.";
+			let message =
+				"Updated: " + updatedFields.join(", ") + " successfully.";
 
 			return reply.status(200).send({
 				message,
@@ -178,3 +259,50 @@ module.exports = (
 		},
 	};
 };
+
+/*
+	NOTES
+
+	Note 1
+
+		* .some() is a JavaScript array method.
+		* It checks if at least one element in the array satisfies the condition inside.
+		* Here, it's checking if any object in the err.validation array has a keyword property equal to "anyOf".
+
+		If none of the fields entered were correct, you get the following error object:
+
+		  	statusCode: 400,
+			code: 'FST_ERR_VALIDATION',
+			validation: [
+				{
+					instancePath: '',
+					schemaPath: '#/anyOf/0/required',
+					keyword: 'required',
+					params: [Object],
+					message: "must have required property 'username'"
+				},
+				{
+					instancePath: '',
+					schemaPath: '#/anyOf/1/required',
+					keyword: 'required',
+					params: [Object],
+					message: "must have required property 'email'"
+				},
+				{
+					instancePath: '',
+					schemaPath: '#/anyOf/2/required',
+					keyword: 'required',
+					params: [Object],
+					message: "must have required property 'currentPassword'"
+				},
+				{
+					instancePath: '',
+					schemaPath: '#/anyOf',
+					keyword: 'anyOf',
+					params: {},
+					message: 'must match a schema in anyOf'
+				}
+				],
+				validationContext: 'body'
+			}
+*/
