@@ -278,6 +278,97 @@ class User {
 		});
 	}
 
+	async findByUsername(username) {
+		const user = await this.db("users").where({ username }).first();
+		return user;
+	}
+
+	async updateProfile(
+		userId,
+		{ username, email, password, currentPassword }
+	) {
+		// Get current user data to check current values
+		const currentUser = await this.findById(userId);
+		if (!currentUser) {
+			throw new CustomError.NotFoundError(
+				`User with id ${userId} not found`
+			);
+		}
+
+		// Track what fields are being updated for the response message
+		const updatedFields = [];
+		const updateData = {};
+
+		// If changing password, verify current password
+		if (password) {
+			if (!currentPassword) {
+				throw new CustomError.BadRequestError(
+					"Current password is required to set a new password"
+				);
+			}
+
+			const isPasswordValid = await this.comparePassword(
+				currentPassword,
+				currentUser.password
+			);
+			if (!isPasswordValid) {
+				throw new CustomError.UnauthorizedError(
+					"Current password is incorrect"
+				);
+			}
+
+			const salt = await bcrypt.genSalt(10);
+			updateData.password = await bcrypt.hash(password, salt);
+			updatedFields.push("password");
+		}
+
+		// Check if username is being updated and validate
+		if (username && username !== currentUser.username) {
+			const existingUser = await this.findByUsername(username);
+			if (existingUser && existingUser.id !== userId) {
+				throw new CustomError.BadRequestError(
+					"Username is already taken"
+				);
+			}
+			updateData.username = username;
+			updatedFields.push("username");
+		}
+
+		// Handle email updates
+		if (email && email !== currentUser.email) {
+			// Prevent Google OAuth users from changing their email
+			if (currentUser.google_id) {
+				throw new CustomError.BadRequestError(
+					"Users who signed in with Google cannot change their email address"
+				);
+			}
+
+			// Check if email is taken by a non-Google user
+			const existingUser = await this.db("users")
+				.where({ email, google_id: null })
+				.first();
+
+			if (existingUser && existingUser.id !== userId) {
+				throw new CustomError.BadRequestError("Email is already taken");
+			}
+
+			updateData.email = email;
+			updatedFields.push("email");
+		}
+
+		// If no fields to update, return error
+		if (Object.keys(updateData).length === 0) {
+			throw new CustomError.BadRequestError("No fields to update");
+		}
+
+		const [updatedUser] = await this.db("users")
+			.where({ id: userId })
+			.update(updateData)
+			.returning(["id", "username", "email"]);
+
+		return { updatedUser, updatedFields };
+	}
+
 	async findById(userId) {
 		const user = await this.db("users").where({ id: userId }).first();
 		return user;

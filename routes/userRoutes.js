@@ -4,6 +4,7 @@ const {
 	createBlockOpts,
 	deleteBlockOpts,
 	uploadProfilePictureOpts,
+	updateProfileOpts,
 } = require("../schemas/userSchemas");
 const { listUserMatchesOpts } = require("../schemas/matchSchemas");
 
@@ -19,6 +20,7 @@ async function userRoutes(fastify, options) {
 		uploadProfilePicture,
 		deleteProfilePicture,
 		listUserMatches,
+		updateProfile,
 	} = require("../controllers/userController")(
 		userModel,
 		blockService,
@@ -82,6 +84,14 @@ async function userRoutes(fastify, options) {
 			schema: listUserMatchesOpts.schema,
 		},
 		listUserMatches
+	);
+	fastify.patch(
+		"/me/profile",
+		{
+			preHandler: fastify.authenticate,
+			schema: updateProfileOpts.schema,
+		},
+		updateProfile
 	);
 }
 

@@ -152,5 +152,29 @@ module.exports = (
 			);
 			return reply.status(200).send(matches);
 		},
+
+		updateProfile: async (request, reply) => {
+			const {
+				user: { id: userId },
+			} = request.user;
+			const { username, email, currentPassword, newPassword } =
+				request.body;
+
+			const { updatedUser, updatedFields } =
+				await userModel.updateProfile(userId, {
+					username,
+					email,
+					password: newPassword,
+					currentPassword,
+				});
+
+			// Create a dynamic success message based on what was updated
+			let message = "Updated: " + updatedFields.join(", ") + " successfully.";
+
+			return reply.status(200).send({
+				message,
+				user: updatedUser,
+			});
+		},
 	};
 };

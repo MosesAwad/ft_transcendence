@@ -80,12 +80,62 @@ const deleteBlockOpts = {
 	},
 };
 
+const updateProfileOpts = {
+	schema: {
+		body: {
+			type: "object",
+			properties: {
+				username: {
+					type: "string",
+					minLength: 3,
+					maxLength: 50,
+				},
+				email: {
+					type: "string",
+					format: "email",
+				},
+				currentPassword: {
+					type: "string",
+					minLength: 6,
+				},
+				newPassword: {
+					type: "string",
+					minLength: 6,
+				},
+			},
+			// Require at least one field to be updated
+			anyOf: [
+				{ required: ["username"] },
+				{ required: ["email"] },
+				{ required: ["currentPassword", "newPassword"] },
+			],
+		},
+		response: {
+			200: {
+				type: "object",
+				properties: {
+					message: { type: "string" },
+					user: {
+						type: "object",
+						properties: {
+							id: { type: "number" },
+							username: { type: "string" },
+							email: { type: "string" },
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
 module.exports = {
 	listSingleUserOpts,
 	listAllUsersOpts,
 	createBlockOpts,
 	deleteBlockOpts,
 	uploadProfilePictureOpts,
+	updateProfileOpts,
 };
 
 /*
