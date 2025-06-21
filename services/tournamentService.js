@@ -1,8 +1,6 @@
 const CustomError = require("../errors");
 
 module.exports = (tournamentModel, matchModel, userModel) => {
-	// Tournament-specific validation logic instead of using matchService
-	// Make our tournament validation function available within the module
 	const validateAndPrepareTournamentPlayers = async (
 		tournamentId,
 		currentUserId,
@@ -55,8 +53,7 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 		);
 
 		// Create a map to track player names and their IDs for consistency checking
-		// Structure: { playerName: userId }
-		const playerNameToId = new Map();
+		const playerNameToId = new Map();	// Structure: { playerName: userId }
 
 		// Build a map of player names to user IDs for consistency checking
 		existingMatches.forEach((match) => {
@@ -104,10 +101,11 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			finalPlayer2Name = `${player2_name} (local)`;
 		}
 
-		// Check for player name/ID consistency across the tournament
-		// Players can participate in multiple matches in a tournament,
-		// but the same name must always have the same ID
-
+		/*
+			* Check for player name/ID consistency across the tournament
+			* Players can participate in multiple matches in a tournament, but the same name must always 
+			  have the same ID
+		*/
 		// Check player1 name/ID consistency
 		if (playerNameToId.has(player1_name)) {
 			const existingId = playerNameToId.get(player1_name);
@@ -148,8 +146,10 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 		const matches = await matchModel.getTournamentMatches(tournamentId);
 		const matchCount = matches.length;
 
-		// For 4-player tournaments, max 3 matches (semifinal + final)
-		// For 8-player tournaments, max 7 matches (quarterfinal + semifinal + final)
+		/*
+			* For 4-player tournaments, max 3 matches (semifinal + final)
+			* For 8-player tournaments, max 7 matches (quarterfinal + semifinal + final)
+		*/
 		const maxMatches =
 			tournament.player_capacity === 4
 				? 3
@@ -177,13 +177,14 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 		);
 		const currentMatchCount = existingMatches.length;
 
-		// Determine if we're creating the match that completes the kickoff stage
-		// For 4-player tournaments, the 2nd match completes the kickoff (indexes 0-1)
-		// For 8-player tournaments, the 4th match completes the kickoff (indexes 0-3)
+		/*
+			Determine if we're creating the match that completes the kickoff stage:
+				* For 4-player tournaments, the 2nd match completes the kickoff (indexes 0-1)
+				* For 8-player tournaments, the 4th match completes the kickoff (indexes 0-3)
+		*/
 		const isCompletingKickoffStage =
 			(tournament.player_capacity === 4 && currentMatchCount === 1) ||
 			(tournament.player_capacity === 8 && currentMatchCount === 3);
-
 		// Only perform this validation if we're completing the kickoff stage
 		if (isCompletingKickoffStage) {
 			// Check if any player in existing matches is a real player (has an ID)
