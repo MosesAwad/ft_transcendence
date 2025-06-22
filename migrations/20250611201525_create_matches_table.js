@@ -7,7 +7,7 @@ exports.up = function (knex) {
 		table.increments("id").primary();
 		table.string("player1_name").notNullable();
 		table.string("player2_name").notNullable();
-		table.enum("match_type", ["1v1", "1vAi", "tournament"]).notNullable();
+		table.enum("match_type", ["1v1", "1vAi", "tournament", "multiplayer"]).notNullable();
 		table.integer("player1_score").defaultTo(0);
 		table.integer("player2_score").defaultTo(0);
 		table.enum("status", ["cancelled", "finished"]).defaultTo("cancelled");

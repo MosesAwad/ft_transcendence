@@ -94,13 +94,18 @@ module.exports = (matchModel, userModel) => ({
 			throw new CustomError.NotFoundError(`No user with id ${userId}`);
 		}
 
-		const matches = await matchModel.db("matches").where(function () {
-			this.where("player1_name", user.username).orWhere(
-				"player2_name",
-				user.username
-			);
-		});
+		// Get regular matches
+		const matches = await matchModel
+			.db("matches")
+			.where(function () {
+				this.where("player1_name", user.username).orWhere(
+					"player2_name",
+					user.username
+				);
+			})
+			.whereNot({ match_type: "multiplayer" });
 
+		// Calculate regular match stats
 		const stats = {
 			totalGames: matches.length,
 			cancelledGames: matches.filter((m) => m.status === "cancelled")
@@ -121,6 +126,26 @@ module.exports = (matchModel, userModel) => ({
 				}
 			}
 		});
+
+		// Get multiplayer stats from teamService (if it's available)
+		try {
+			const Team = require("../models/Team");
+			const teamModel = new Team(matchModel.db);
+			const teamStats = await require("./teamService")(
+				matchModel,
+				teamModel,
+				userModel
+			).getUserMultiplayerStats(userId);
+
+			// Combine stats
+			stats.totalGames += teamStats.totalGames;
+			stats.cancelledGames += teamStats.cancelledGames;
+			stats.wins += teamStats.wins;
+			stats.losses += teamStats.losses;
+		} catch (error) {
+			// If teamService is not available, just return regular stats
+			console.error("Could not fetch multiplayer stats:", error);
+		}
 
 		return stats;
 	},

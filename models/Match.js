@@ -11,22 +11,7 @@ class Match {
 		player1_name,
 		player2_name,
 		match_type,
-		tournament_id = null,
 	}) {
-		// // Reject tournament matches - should use tournament route instead
-		// if (tournament_id) {
-		// 	throw new CustomError.BadRequestError(
-		// 		"Tournament matches should be created through /api/v1/tournaments/:tournamentId/matches endpoint"
-		// 	);
-		// }
-
-		// // Reject tournament match_type - should use tournament route instead
-		// if (match_type === "tournament") {
-		// 	throw new CustomError.BadRequestError(
-		// 		"Tournament matches should be created through /api/v1/tournaments/:tournamentId/matches endpoint"
-		// 	);
-		// }
-
 		const [match] = await this.db("matches")
 			.insert({
 				player1_id,
@@ -34,7 +19,6 @@ class Match {
 				player1_name,
 				player2_name,
 				match_type,
-				tournament_id
 			})
 			.returning("*");
 
@@ -45,6 +29,13 @@ class Match {
 		const match = await this.db("matches").where({ id: matchId }).first();
 		if (!match) {
 			throw new CustomError.NotFoundError(`No match with id ${matchId}`);
+		}
+
+		if (match.match_type === "multiplayer") {
+			// For multiplayer, authorization check is done in the teamService
+			throw new CustomError.BadRequestError(
+				"Multiplayer matches should be finalized through the match endpoint with is_multiplayer=true"
+			);
 		}
 
 		if (
