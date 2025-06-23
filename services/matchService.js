@@ -127,11 +127,11 @@ module.exports = (matchModel, userModel) => ({
 			}
 		});
 
-		// Get multiplayer stats from teamService (if it's available)
+		// Get multiplayer stats from multiplayerService (if it's available)
 		try {
 			const Team = require("../models/Team");
 			const teamModel = new Team(matchModel.db);
-			const teamStats = await require("./teamService")(
+			const teamStats = await require("./multiplayerService")(
 				matchModel,
 				teamModel,
 				userModel
@@ -143,7 +143,7 @@ module.exports = (matchModel, userModel) => ({
 			stats.wins += teamStats.wins;
 			stats.losses += teamStats.losses;
 		} catch (error) {
-			// If teamService is not available, just return regular stats
+			// If multiplayerService is not available, just return regular stats
 			console.error("Could not fetch multiplayer stats:", error);
 		}
 

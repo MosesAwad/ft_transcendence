@@ -5,7 +5,7 @@ module.exports = (matchModel, teamModel, userModel) => {
 		matchModel,
 		userModel
 	);
-	const teamService = require("../services/teamService")(
+	const multiplayerService = require("../services/multiplayerService")(
 		matchModel,
 		teamModel,
 		userModel
@@ -26,7 +26,7 @@ module.exports = (matchModel, teamModel, userModel) => {
 			} = request.body;
 
 			if (match_type === "multiplayer") {
-				const match = await teamService.createMultiplayerMatch({
+				const match = await multiplayerService.createMultiplayerMatch({
 					team1_name,
 					team2_name,
 					players,
@@ -74,16 +74,7 @@ module.exports = (matchModel, teamModel, userModel) => {
 
 			// Handle multiplayer match update
 			if (is_multiplayer) {
-				// Create a teamService instance
-				const Team = require("../models/Team");
-				const teamModel = new Team(matchModel.db);
-				const teamService = require("../services/teamService")(
-					matchModel,
-					teamModel,
-					userModel
-				);
-
-				const updatedMatch = await teamService.finalizeMultiplayerMatch(
+				const updatedMatch = await multiplayerService.finalizeMultiplayerMatch(
 					matchId,
 					team1_score,
 					team2_score,

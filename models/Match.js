@@ -32,7 +32,7 @@ class Match {
 		}
 
 		if (match.match_type === "multiplayer") {
-			// For multiplayer, authorization check is done in the teamService
+			// For multiplayer, authorization check is done in the multiplayerService
 			throw new CustomError.BadRequestError(
 				"Multiplayer matches should be finalized through the match endpoint with is_multiplayer=true"
 			);
@@ -106,7 +106,7 @@ class Match {
 		return matches;
 	}
 
-	// Helper function for teamService
+	// Helper function for multiplayerService
 	async listUserMultiplayerMatches(userId, limit, page) {
 		const multiplayerMatches = await this.db("matches")
 			.select(

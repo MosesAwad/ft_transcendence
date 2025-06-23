@@ -17,7 +17,7 @@ module.exports = (
 		matchModel,
 		userModel
 	);
-	const teamService = require("../services/teamService")(
+	const multiplayerService = require("../services/multiplayerService")(
 		matchModel,
 		teamModel,
 		userModel
@@ -242,7 +242,7 @@ module.exports = (
 			}
 			if (!match_type || match_type === "multiplayer") {
 				multiplayer_matches =
-					await teamService.listUserMultiplayerMatches(
+					await multiplayerService.listUserMultiplayerMatches(
 						userId,
 						limit,
 						page
