@@ -30,6 +30,7 @@ const Notification = require("./models/Notification");
 const Chat = require("./models/Chat");
 const Match = require("./models/Match");
 const Tournament = require("./models/Tournament");
+const Team = require("./models/Team");
 
 const fastifyCookie = require("@fastify/cookie");
 const fastifyJwt = require("@fastify/jwt");
@@ -60,6 +61,7 @@ const start = async () => {
 		const notificationModel = new Notification(db);
 		const chatModel = new Chat(db);
 		const matchModel = new Match(db);
+		const teamModel = new Team(db);
 		const tournamentModel = new Tournament(db);
 
 		// 3. Register plugins (Must register fastifyCookie before fastifyJwt and oauthPlugin)
@@ -183,6 +185,7 @@ const start = async () => {
 		});
 		fastify.register(matchRoutes, {
 			matchModel,
+			teamModel,
 			userModel,
 			prefix: "/api/v1/matches",
 		});

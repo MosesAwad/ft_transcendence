@@ -5,9 +5,9 @@ const {
 } = require("../schemas/matchSchemas");
 
 async function matchRoutes(fastify, options) {
-	const { matchModel, userModel } = options;
+	const { matchModel, teamModel, userModel } = options;
 	const { createMatch, updateMatchResult } =
-		require("../controllers/matchController")(matchModel, userModel);
+		require("../controllers/matchController")(matchModel, teamModel, userModel);
 
 	fastify.post(
 		"/",

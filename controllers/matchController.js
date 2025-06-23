@@ -1,8 +1,13 @@
 const { StatusCodes } = require("http-status-codes");
 
-module.exports = (matchModel, userModel) => {
+module.exports = (matchModel, teamModel, userModel) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
+		userModel
+	);
+	const teamService = require("../services/teamService")(
+		matchModel,
+		teamModel,
 		userModel
 	);
 
@@ -20,17 +25,7 @@ module.exports = (matchModel, userModel) => {
 				players,
 			} = request.body;
 
-			// Handle multiplayer match creation
 			if (match_type === "multiplayer") {
-				// Create a teamService instance
-				const Team = require("../models/Team");
-				const teamModel = new Team(matchModel.db);
-				const teamService = require("../services/teamService")(
-					matchModel,
-					teamModel,
-					userModel
-				);
-
 				const match = await teamService.createMultiplayerMatch({
 					team1_name,
 					team2_name,
@@ -41,8 +36,6 @@ module.exports = (matchModel, userModel) => {
 				return reply.status(StatusCodes.CREATED).send({ match });
 			}
 
-			// For non-multiplayer matches, continue with the existing logic
-			// Validate and prepare player names
 			const {
 				player1_name: finalPlayer1Name,
 				player2_name: finalPlayer2Name,
