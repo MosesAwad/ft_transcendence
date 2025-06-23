@@ -59,6 +59,7 @@ class Match {
 				player1_score,
 				player2_score,
 				status: "finished",
+				updated_at: this.db.fn.now(),
 			})
 			.returning("*");
 
@@ -77,10 +78,7 @@ class Match {
 
 	async listUserNonMultiplayerMatches(userId, limit, page, match_type) {
 		const query = this.db("matches").where(function () {
-			this.where("player1_id", userId).orWhere(
-				"player2_id",
-				userId
-			);
+			this.where("player1_id", userId).orWhere("player2_id", userId);
 		});
 
 		// Always exclude multiplayer matches (listUserMatches controller prevents this from happening anyways but extra precaution)
