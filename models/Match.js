@@ -83,7 +83,7 @@ class Match {
 			);
 		});
 
-		// Always exclude multiplayer matches
+		// Always exclude multiplayer matches (listUserMatches controller prevents this from happening anyways but extra precaution)
 		query.andWhereNot("match_type", "multiplayer");
 
 		// Apply match_type filter if given (but still excluding "multiplayer")

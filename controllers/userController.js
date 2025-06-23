@@ -230,24 +230,29 @@ module.exports = (
 			const { userId } = request.params;
 			const { limit, page, match_type } = request.query;
 
-			const matches = await matchService.listUserNonMultiplayerMatches(
-				userId,
-				limit,
-				page,
-				match_type
-			);
-			const multiplayer_matches =
-				await teamService.listUserMultiplayerMatches(
+			let matches = [];
+			let multiplayer_matches = [];
+			if (!match_type || match_type !== "multiplayer") {
+				matches = await matchService.listUserNonMultiplayerMatches(
 					userId,
 					limit,
-					page
+					page,
+					match_type
 				);
+			}
+			if (!match_type || match_type === "multiplayer") {
+				multiplayer_matches =
+					await teamService.listUserMultiplayerMatches(
+						userId,
+						limit,
+						page
+					);
+			}
 
 			const allMatches = [...matches, ...multiplayer_matches];
-			// Sort by created_at descending
 			allMatches.sort(
 				(a, b) => new Date(b.created_at) - new Date(a.created_at)
-			);
+			); // Sort by created_at descending
 
 			return reply.status(200).send(allMatches);
 		},
