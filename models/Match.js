@@ -75,7 +75,7 @@ class Match {
 		return match;
 	}
 
-	async listUserMatches(username, limit, page, match_type) {
+	async listUserNonMultiplayerMatches(username, limit, page, match_type) {
 		const query = this.db("matches").where(function () {
 			this.where("player1_name", username).orWhere(
 				"player2_name",

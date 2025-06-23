@@ -105,18 +105,5 @@ module.exports = (matchModel, teamModel, userModel) => {
 
 			return reply.status(StatusCodes.OK).send({ match: updatedMatch });
 		},
-
-		listUserMatches: async (request, reply) => {
-			const { userId } = request.params;
-			const { limit, page, match_type } = request.query;
-
-			const matches = await matchService.listUserMatches(
-				userId,
-				limit,
-				page,
-				match_type
-			);		
-			return matches;
-		},
 	};
 };

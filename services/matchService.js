@@ -72,14 +72,14 @@ module.exports = (matchModel, userModel) => ({
 		);
 	},
 
-	listUserMatches: async (userId, limit, page, match_type) => {
+	listUserNonMultiplayerMatches: async (userId, limit, page, match_type) => {
 		// First verify user exists
 		const user = await userModel.findById(userId);
 		if (!user) {
 			throw new CustomError.NotFoundError(`No user with id ${userId}`);
 		}
 
-		const matches = await matchModel.listUserMatches(
+		const matches = await matchModel.listUserNonMultiplayerMatches(
 			user.username,
 			limit,
 			page,

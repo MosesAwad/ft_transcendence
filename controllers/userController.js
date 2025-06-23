@@ -230,7 +230,7 @@ module.exports = (
 			const { userId } = request.params;
 			const { limit, page, match_type } = request.query;
 
-			const matches = await matchService.listUserMatches(
+			const matches = await matchService.listUserNonMultiplayerMatches(
 				userId,
 				limit,
 				page,
