@@ -115,8 +115,8 @@ module.exports = (matchModel, teamModel, userModel) => {
 				limit,
 				page,
 				match_type
-			);
-			return reply.status(StatusCodes.OK).send(matches);
+			);		
+			return matches;
 		},
 	};
 };

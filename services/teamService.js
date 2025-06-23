@@ -227,24 +227,48 @@ module.exports = (matchModel, teamModel, userModel) => ({
 		return updatedMatch;
 	},
 
-	getMultiplayerMatchDetails: async (matchId) => {
-		const match = await matchModel.getMatch(matchId);
+	// getMultiplayerMatchDetails: async (matchId) => {
+	// 	const match = await matchModel.getMatch(matchId);
 
-		if (!match) {
-			throw new CustomError.NotFoundError(`No match with id ${matchId}`);
+	// 	if (!match) {
+	// 		throw new CustomError.NotFoundError(`No match with id ${matchId}`);
+	// 	}
+
+	// 	if (match.match_type !== "multiplayer") {
+	// 		throw new CustomError.BadRequestError(
+	// 			"This is not a multiplayer match"
+	// 		);
+	// 	}
+
+	// 	// Get teams and players
+	// 	const teams = await teamModel.getTeamsByMatchId(matchId);
+	// 	match.teams = teams;
+
+	// 	return match;
+	// },
+
+	listUserMultiplayerMatches: async (userId, limit, page) => {
+		const user = await userModel.findById(userId);
+		if (!user) {
+			throw new CustomError.NotFoundError(`No user with id ${userId}`);
 		}
 
-		if (match.match_type !== "multiplayer") {
-			throw new CustomError.BadRequestError(
-				"This is not a multiplayer match"
-			);
+		const multiplayer_matches = await matchModel.listUserMultiplayerMatches(
+			userId,
+			limit,
+			page
+		);
+
+		for (const multiplayer_match of multiplayer_matches) {
+			// Get teams for each match
+			const matchTeams = await teamModel.getTeamsByMatchId(multiplayer_match.id);
+			if (matchTeams.length !== 2) 
+				continue;
+
+			multiplayer_match.teams = matchTeams;
 		}
 
-		// Get teams and players
-		const teams = await teamModel.getTeamsByMatchId(matchId);
-		match.teams = teams;
-
-		return match;
+		return multiplayer_matches;
 	},
 
 	getUserMultiplayerStats: async (userId) => {

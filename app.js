@@ -169,6 +169,7 @@ const start = async () => {
 			userModel,
 			blockService,
 			matchModel,
+			teamModel,
 			onlineUsers,
 			friendModel,
 			prefix: "/api/v1/users",

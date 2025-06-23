@@ -83,8 +83,12 @@ class Match {
 			);
 		});
 
-		if (match_type) {
-			query.andWhere({ match_type });
+		// Always exclude multiplayer matches
+		query.andWhereNot("match_type", "multiplayer");
+
+		// Apply match_type filter if given (but still excluding "multiplayer")
+		if (match_type && match_type !== "multiplayer") {
+			query.andWhere("match_type", match_type);
 		}
 
 		const matches = await query
@@ -102,6 +106,28 @@ class Match {
 			.orderBy("created_at", "asc");
 
 		return matches;
+	}
+
+	// Helper function for teamService
+	async listUserMultiplayerMatches(userId, limit, page) {
+		const multiplayerMatches = await this.db("matches")
+			.select(
+				"id",
+				"status",
+				"match_type",
+				"tournament_id",
+				"created_at",
+				"updated_at"
+			)
+			.where(function () {
+				this.where("player1_id", userId).orWhere("player2_id", userId);
+			})
+			.andWhere({ match_type: "multiplayer" })
+			.orderBy("created_at", "desc")
+			.limit(limit)
+			.offset((page - 1) * limit);
+
+		return multiplayerMatches;
 	}
 }
 

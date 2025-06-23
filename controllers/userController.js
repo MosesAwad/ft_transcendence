@@ -9,11 +9,17 @@ module.exports = (
 	userModel,
 	blockService,
 	matchModel,
+	teamModel,
 	onlineUsers,
 	friendModel
 ) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
+		userModel
+	);
+	const teamService = require("../services/teamService")(
+		matchModel,
+		teamModel,
 		userModel
 	);
 
@@ -230,7 +236,20 @@ module.exports = (
 				page,
 				match_type
 			);
-			return reply.status(200).send(matches);
+			const multiplayer_matches =
+				await teamService.listUserMultiplayerMatches(
+					userId,
+					limit,
+					page
+				);
+
+			const allMatches = [...matches, ...multiplayer_matches];
+			// Sort by created_at descending
+			allMatches.sort(
+				(a, b) => new Date(b.created_at) - new Date(a.created_at)
+			);
+
+			return reply.status(200).send(allMatches);
 		},
 
 		updateProfile: async (request, reply) => {

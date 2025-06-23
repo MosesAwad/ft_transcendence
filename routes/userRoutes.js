@@ -9,8 +9,14 @@ const {
 const { listUserMatchesOpts } = require("../schemas/matchSchemas");
 
 async function userRoutes(fastify, options) {
-	const { userModel, blockService, matchModel, onlineUsers, friendModel } =
-		options;
+	const {
+		userModel,
+		blockService,
+		matchModel,
+		teamModel,
+		onlineUsers,
+		friendModel,
+	} = options;
 	const {
 		errorHandler,
 		listAllUsers,
@@ -26,6 +32,7 @@ async function userRoutes(fastify, options) {
 		userModel,
 		blockService,
 		matchModel,
+		teamModel,
 		onlineUsers,
 		friendModel
 	);
