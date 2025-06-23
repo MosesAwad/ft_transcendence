@@ -29,7 +29,10 @@ class Team {
 	}
 
 	async getTeamWithPlayers(teamId) {
-		const team = await this.db("teams").where({ id: teamId }).first();
+		const team = await this.db("teams")
+			.where({ id: teamId })
+			.select("id", "name", "score", "match_id") // Exclude timestamps
+			.first();
 
 		if (!team) {
 			throw new CustomError.NotFoundError(`No team with id ${teamId}`);
@@ -53,7 +56,9 @@ class Team {
 	}
 
 	async getTeamsByMatchId(matchId) {
-		const teams = await this.db("teams").where({ match_id: matchId });
+		const teams = await this.db("teams")
+			.where({ match_id: matchId })
+			.select("id", "name", "score", "match_id"); // Exclude timestamps
 
 		for (let team of teams) {
 			team.players = await this.db("team_players")
