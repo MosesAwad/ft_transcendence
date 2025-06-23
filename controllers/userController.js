@@ -15,6 +15,7 @@ module.exports = (
 ) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
+		teamModel,
 		userModel
 	);
 	const multiplayerService = require("../services/multiplayerService")(

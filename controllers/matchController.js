@@ -3,6 +3,7 @@ const { StatusCodes } = require("http-status-codes");
 module.exports = (matchModel, teamModel, userModel) => {
 	const matchService = require("../services/matchService")(
 		matchModel,
+		teamModel,
 		userModel
 	);
 	const multiplayerService = require("../services/multiplayerService")(
