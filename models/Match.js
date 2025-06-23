@@ -75,11 +75,11 @@ class Match {
 		return match;
 	}
 
-	async listUserNonMultiplayerMatches(username, limit, page, match_type) {
+	async listUserNonMultiplayerMatches(userId, limit, page, match_type) {
 		const query = this.db("matches").where(function () {
-			this.where("player1_name", username).orWhere(
-				"player2_name",
-				username
+			this.where("player1_id", userId).orWhere(
+				"player2_id",
+				userId
 			);
 		});
 

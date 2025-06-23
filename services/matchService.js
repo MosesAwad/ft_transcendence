@@ -80,7 +80,7 @@ module.exports = (matchModel, userModel) => ({
 		}
 
 		const matches = await matchModel.listUserNonMultiplayerMatches(
-			user.username,
+			userId,
 			limit,
 			page,
 			match_type
