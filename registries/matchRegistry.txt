@@ -1,0 +1,160 @@
+ █████╗ ██████╗ ██╗    ███████╗███╗   ██╗██████╗ ██████╗  ██████╗ ██╗███╗   ██╗████████╗███████╗
+██╔══██╗██╔══██╗██║    ██╔════╝████╗  ██║██╔══██╗██╔══██╗██╔═══██╗██║████╗  ██║╚══██╔══╝██╔════╝
+███████║██████╔╝██║    █████╗  ██╔██╗ ██║██║  ██║██████╔╝██║   ██║██║██╔██╗ ██║   ██║   ███████╗
+██╔══██║██╔═══╝ ██║    ██╔══╝  ██║╚██╗██║██║  ██║██╔═══╝ ██║   ██║██║██║╚██╗██║   ██║   ╚════██║
+██║  ██║██║     ██║    ███████╗██║ ╚████║██████╔╝██║     ╚██████╔╝██║██║ ╚████║   ██║   ███████║
+╚═╝  ╚═╝╚═╝     ╚═╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝      ╚═════╝ ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═════
+
+
+=====================================================================================================
+                                        SECTION
+
+    This section is for regular matches (match_type = 1v1 and match_type = 1vAi). Tournament matches 
+                    and multiplayer matches are described in another section.
+
+=====================================================================================================
+
+Action:
+    * Creates a regular match between two users, the authenticated user and another local user. 
+    * Creates a regular match between the authenticated user and an AI bot. 
+
+Endpoint:
+    POST /matches
+
+        Body 1:
+
+        {
+            "player1_id": 5,
+            "player2_id": null,
+            "player1_name": "mr2",
+            "player2_name": "mr.random",
+            "match_type": "1v1"
+        }
+
+        Body 2 (For AI matches, player2_name is automatically assigned as "AI bot" and player2_id 
+                is not required):
+
+        {
+            "player1_id": 5,
+            "player1_name": "mr2",
+            "match_type": "1vAi"
+        }
+
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Finalizes the result between the two players for a particular match.
+
+Endpoint:
+    PATCH /matches/:matchId
+
+        Body:
+
+        {
+            "player1_score": 3,
+            "player2_score": 1,
+            "is_multiplayer": false
+        }
+
+
+=====================================================================================================
+                                            SECTION
+
+    This section is for multiplayer matches (match_type = "multiplayer"). Tournament matches are 
+                                described in another section.
+
+=====================================================================================================
+
+Action:
+    Creates a multiplayer match between 4 users, where one user is the authenticated user and the 
+    other three users are local players.
+
+Endpoint:
+    POST /matches
+
+    Body:
+
+        {
+            "team1_name": "A",
+            "team2_name": "B",
+            "players": [
+                {
+                    "name": "Eastwood",
+                    "user_id": null,
+                    "team": 1
+                },
+                {
+                    "name": "Harlow",
+                    "user_id": null,
+                    "team": 1
+                },
+                {
+                    "name": "mr1",
+                    "user_id": 4,
+                    "team": 2
+                },
+                {
+                "name": "Van_Damme",
+                    "user_id": null,
+                    "team": 2
+                }
+            ],
+            "match_type": "multiplayer"
+        }
+
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Finalizes the result between the two teams for a particular match.
+
+Endpoint:
+    PATCH /matches/:matchId
+
+    Body:
+
+        {
+            "team1_score": 2,
+            "team2_score": 3,
+            "is_multiplayer": true
+        }
+
+======================================================================================================
+                                                SECTION
+
+    This section is for tournaments and tournament matches (match_type = "tournament"). You are first 
+            supposed to create a tournament and then assign matches of match_type "tournament" to 
+                                            that tournament.
+
+======================================================================================================
+
+Action:
+    Creates a tournament. You are allowed to create a tournament of either 4 or 8 players.
+
+Endpoint:
+
+    POST /tournaments
+
+    Body:
+
+        {
+            "player_capacity": 4
+        }
+
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Creates a match within a tournament. No need to assign match_type: "tournament" in the JSON body, the 
+    backend does that automatically as all matches created via this route are strictly tournament matches.
+
+Endpoint:
+
+    POST tournament/:tournamentId/matches
+
+    Body:
+
+        {
+            "player1_id": 4,
+            "player2_id": null,
+            "player1_name": "mr1",
+            "player2_name": "mr2"
+        }

@@ -46,7 +46,7 @@ const createMatchOpts = {
 				{
 					if: {
 						properties: {
-							match_type: { enum: ["1v1", "1vAi"] },
+							match_type: { enum: ["1v1"] },
 						},
 					},
 					then: {
@@ -57,6 +57,16 @@ const createMatchOpts = {
 							"player1_name",
 							"player2_name",
 						],
+					},
+				},
+				{
+					if: {
+						properties: {
+							match_type: { enum: ["1vAi"] },
+						},
+					},
+					then: {
+						required: ["match_type", "player1_id", "player1_name"],
 					},
 				},
 			],
