@@ -52,6 +52,27 @@ const createTournamentMatchOpts = {
 	},
 };
 
+const updateTournamentMatchOpts = {
+	schema: {
+		params: {
+			type: "object",
+			properties: {
+				tournamentId: { type: "number" },
+				matchId: { type: "number" },
+			},
+			required: ["tournamentId", "matchId"],
+		},
+		body: {
+			type: "object",
+			properties: {
+				player1_score: { type: "number", minimum: 0 },
+				player2_score: { type: "number", minimum: 0 },
+			},
+			required: ["player1_score", "player2_score"],
+		},
+	},
+};
+
 const listTournamentsOpts = {
 	schema: {
 		querystring: {
@@ -68,5 +89,6 @@ module.exports = {
 	createTournamentOpts,
 	getTournamentOpts,
 	createTournamentMatchOpts,
+	updateTournamentMatchOpts,
 	listTournamentsOpts,
 };

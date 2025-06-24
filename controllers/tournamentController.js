@@ -10,6 +10,7 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 	return {
 		createTournament: async (request, reply) => {
 			const { player_capacity = 4 } = request.body;
+			const { id: currentUserId } = request.user.user;
 
 			// Validate player capacity is either 4 or 8
 			if (player_capacity !== 4 && player_capacity !== 8) {
@@ -19,7 +20,8 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			}
 
 			const tournament = await tournamentModel.createTournament(
-				player_capacity
+				player_capacity,
+				currentUserId
 			);
 
 			return reply.status(StatusCodes.CREATED).send({ tournament });
@@ -59,6 +61,22 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			);
 
 			return reply.status(StatusCodes.CREATED).send({ match });
+		},
+
+		updateTournamentMatch: async (request, reply) => {
+			const { tournamentId, matchId } = request.params;
+			const { id: currentUserId } = request.user.user;
+			const { player1_score, player2_score } = request.body;
+
+			const match = await tournamentService.updateTournamentMatch(
+				tournamentId,
+				matchId,
+				currentUserId,
+				player1_score,
+				player2_score
+			);
+
+			return reply.status(StatusCodes.OK).send({ match });
 		},
 	};
 };

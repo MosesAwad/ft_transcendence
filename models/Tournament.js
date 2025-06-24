@@ -5,10 +5,11 @@ class Tournament {
 		this.db = db;
 	}
 
-	async createTournament(player_capacity = 4) {
+	async createTournament(player_capacity = 4, creator_id) {
 		const [tournament] = await this.db("tournaments")
 			.insert({
 				player_capacity,
+				creator_id,
 			})
 			.returning("*");
 

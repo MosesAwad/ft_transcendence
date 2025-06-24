@@ -227,26 +227,22 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 					// Determine current round based on match count and tournament capacity
 					let currentRoundMatches = [];
 
+					// 4-player tournament: match 0-1 = kickoff, match 2 = final
 					if (tournament.player_capacity === 4) {
-						// 4-player tournament: match 0-1 = kickoff, match 2 = final
 						if (currentMatchCount <= 1) {
-							// We're in kickoff round (matches 0-1)
-							currentRoundMatches = existingMatches.slice(0, 2);
+							currentRoundMatches = existingMatches.slice(0, 2); // We're in kickoff round (matches 0-1)
 						} else {
-							// We're in final round (match 2)
-							currentRoundMatches = existingMatches.slice(2, 3);
+							currentRoundMatches = existingMatches.slice(2, 3); // We're in final round (match 2)
 						}
-					} else if (tournament.player_capacity === 8) {
-						// 8-player tournament: match 0-3 = kickoff, match 4-5 = semi, match 6 = final
+					}
+					// 8-player tournament: match 0-3 = kickoff, match 4-5 = semi, match 6 = final
+					else if (tournament.player_capacity === 8) {
 						if (currentMatchCount <= 3) {
-							// We're in kickoff round (matches 0-3)
-							currentRoundMatches = existingMatches.slice(0, 4);
+							currentRoundMatches = existingMatches.slice(0, 4); // We're in kickoff round (matches 0-3)
 						} else if (currentMatchCount <= 5) {
-							// We're in semifinal round (matches 4-5)
-							currentRoundMatches = existingMatches.slice(4, 6);
+							currentRoundMatches = existingMatches.slice(4, 6); // We're in semifinal round (matches 4-5)
 						} else {
-							// We're in final round (match 6)
-							currentRoundMatches = existingMatches.slice(6, 7);
+							currentRoundMatches = existingMatches.slice(6, 7); // We're in final round (match 6)
 						}
 					}
 
@@ -436,7 +432,7 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 				);
 			}
 
-			// Validate the real player requirement
+			// Validate the real player requirement (makes sure that there is at least one real player per tournament)
 			await validateRealPlayerRequirement(
 				tournamentId,
 				player1_id,
@@ -460,6 +456,68 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			});
 
 			return match;
+		},
+
+		// Update a tournament match
+		updateTournamentMatch: async (
+			tournamentId,
+			matchId,
+			currentUserId,
+			player1_score,
+			player2_score
+		) => {
+			// Get the tournament
+			const tournament = await tournamentModel.getTournament(
+				tournamentId
+			);
+			if (!tournament) {
+				throw new CustomError.NotFoundError(
+					`No tournament with id ${tournamentId}`
+				);
+			}
+
+			// Check if the current user is the tournament creator
+			if (tournament.creator_id !== currentUserId) {
+				throw new CustomError.UnauthorizedError(
+					"Only the tournament creator can update tournament matches"
+				);
+			}
+
+			// Get the match
+			const match = await matchModel.getMatch(matchId);
+			if (!match) {
+				throw new CustomError.NotFoundError(
+					`No match with id ${matchId}`
+				);
+			}
+
+			// Verify the match belongs to this tournament
+			if (match.tournament_id !== parseInt(tournamentId)) {
+				throw new CustomError.BadRequestError(
+					`Match ${matchId} does not belong to tournament ${tournamentId}`
+				);
+			}
+
+			// Check if match is already finished
+			if (match.status === "finished") {
+				throw new CustomError.BadRequestError(
+					"Match has already been finalized"
+				);
+			}
+
+			// Update the match
+			const [updatedMatch] = await matchModel
+				.db("matches")
+				.where({ id: matchId })
+				.update({
+					player1_score,
+					player2_score,
+					status: "finished",
+					updated_at: matchModel.db.fn.now(),
+				})
+				.returning("*");
+
+			return updatedMatch;
 		},
 	};
 };

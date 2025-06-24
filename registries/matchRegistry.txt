@@ -150,11 +150,34 @@ Endpoint:
 
     POST tournament/:tournamentId/matches
 
-    Body:
+    Body 1 (kickoff - 1st game):
 
         {
             "player1_id": 4,
             "player2_id": null,
             "player1_name": "mr1",
-            "player2_name": "mr2"
+            "player2_name": "Morgan"
         }
+
+    Body 2 (kickoff - 2nd game):
+
+        {
+            "player1_id": null,
+            "player2_id": null,
+            "player1_name": "Jake",
+            "player2_name": "Max"
+        }
+
+    Body 3 (final - 3rd game):
+
+        {
+            "player1_id": 4,
+            "player2_id": null,
+            "player1_name": "mr1",
+            "player2_name": "Max"
+        }
+    
+DISCLAIMER:
+
+    To finalize or update the results of a tournament match, just use the regular match endpoint for that 
+    which is PATCH /matches/:matchId

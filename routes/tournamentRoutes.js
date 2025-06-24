@@ -2,6 +2,7 @@ const {
 	createTournamentOpts,
 	getTournamentOpts,
 	createTournamentMatchOpts,
+	updateTournamentMatchOpts,
 	listTournamentsOpts,
 } = require("../schemas/tournamentSchemas");
 
@@ -12,6 +13,7 @@ async function tournamentRoutes(fastify, options) {
 		getTournament,
 		listTournaments,
 		createTournamentMatch,
+		updateTournamentMatch,
 	} = require("../controllers/tournamentController")(
 		tournamentModel,
 		matchModel,
@@ -56,6 +58,16 @@ async function tournamentRoutes(fastify, options) {
 			schema: createTournamentMatchOpts.schema,
 		},
 		createTournamentMatch
+	);
+
+	// Update a match within a tournament
+	fastify.patch(
+		"/:tournamentId/matches/:matchId",
+		{
+			preHandler: fastify.authenticate,
+			schema: updateTournamentMatchOpts.schema,
+		},
+		updateTournamentMatch
 	);
 }
 
