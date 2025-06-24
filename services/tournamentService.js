@@ -1,139 +1,6 @@
 const CustomError = require("../errors");
 
 module.exports = (tournamentModel, matchModel, userModel) => {
-	const validateAndPrepareTournamentPlayers = async (
-		tournamentId,
-		currentUserId,
-		player1_id,
-		player2_id,
-		player1_name,
-		player2_name
-	) => {
-		// Check if names are identical
-		if (player1_name === player2_name) {
-			throw new CustomError.BadRequestError(
-				"Player names cannot be the same"
-			);
-		}
-
-		// Validate no spaces in names
-		const validateNoSpaces = (name, label) => {
-			if (name.includes(" ")) {
-				throw new CustomError.BadRequestError(
-					`${label} name cannot contain spaces`
-				);
-			}
-		};
-
-		validateNoSpaces(player1_name, "Player 1");
-		validateNoSpaces(player2_name, "Player 2");
-
-		// Validate authenticated users (if any)
-		const validateAuthUser = async (userId, providedName, label) => {
-			if (userId) {
-				const user = await userModel.findById(userId);
-				if (!user) {
-					throw new CustomError.NotFoundError(
-						`${label} user not found`
-					);
-				}
-				if (user.username !== providedName) {
-					throw new CustomError.BadRequestError(
-						`${label} name does not match user's username`
-					);
-				}
-				return user.username;
-			}
-			return null;
-		};
-
-		// Get existing participants in the tournament to check for duplicates
-		const existingMatches = await matchModel.getTournamentMatches(
-			tournamentId
-		);
-
-		// Create a map to track player names and their IDs for consistency checking
-		const playerNameToId = new Map();	// Structure: { playerName: userId }
-
-		// Build a map of player names to user IDs for consistency checking
-		existingMatches.forEach((match) => {
-			const player1 = match.player1_name.replace(" (local)", "");
-			const player2 = match.player2_name.replace(" (local)", "");
-
-			// Track player1's ID (could be null for local players)
-			if (!playerNameToId.has(player1)) {
-				playerNameToId.set(player1, match.player1_id);
-			}
-
-			// Track player2's ID (could be null for local players)
-			if (!playerNameToId.has(player2)) {
-				playerNameToId.set(player2, match.player2_id);
-			}
-		});
-
-		// Process player1
-		let finalPlayer1Name = player1_name;
-		if (player1_id === currentUserId) {
-			// Current user is player1, validate username
-			await validateAuthUser(player1_id, player1_name, "Player 1");
-		} else if (player1_id) {
-			// Another user ID was provided, which is not allowed
-			throw new CustomError.UnauthorizedError(
-				"Only the current user's ID should be provided, impersonating other users is forbidden"
-			);
-		} else {
-			// Local player, add (local) suffix
-			finalPlayer1Name = `${player1_name} (local)`;
-		}
-
-		// Process player2
-		let finalPlayer2Name = player2_name;
-		if (player2_id === currentUserId) {
-			// Current user is player2, validate username
-			await validateAuthUser(player2_id, player2_name, "Player 2");
-		} else if (player2_id) {
-			// Another user ID was provided, which is not allowed
-			throw new CustomError.UnauthorizedError(
-				"Only the current user's ID should be provided, impersonating other users is forbidden"
-			);
-		} else {
-			// Local player, add (local) suffix
-			finalPlayer2Name = `${player2_name} (local)`;
-		}
-
-		/*
-			* Check for player name/ID consistency across the tournament
-			* Players can participate in multiple matches in a tournament, but the same name must always 
-			  have the same ID
-		*/
-		// Check player1 name/ID consistency
-		if (playerNameToId.has(player1_name)) {
-			const existingId = playerNameToId.get(player1_name);
-			// If player had an ID before, it must match; or both must be null (local players)
-			if (existingId !== player1_id) {
-				throw new CustomError.BadRequestError(
-					`Player name "${player1_name}" is already used in this tournament with a different ID`
-				);
-			}
-		}
-
-		// Check player2 name/ID consistency
-		if (playerNameToId.has(player2_name)) {
-			const existingId = playerNameToId.get(player2_name);
-			// If player had an ID before, it must match; or both must be null (local players)
-			if (existingId !== player2_id) {
-				throw new CustomError.BadRequestError(
-					`Player name "${player2_name}" is already used in this tournament with a different ID`
-				);
-			}
-		}
-
-		return {
-			player1_name: finalPlayer1Name,
-			player2_name: finalPlayer2Name,
-		};
-	};
-
 	// Define tournament completion check function
 	const checkTournamentComplete = async (tournamentId) => {
 		const tournament = await tournamentModel.getTournament(tournamentId);
@@ -147,9 +14,9 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 		const matchCount = matches.length;
 
 		/*
-			* For 4-player tournaments, max 3 matches (semifinal + final)
-			* For 8-player tournaments, max 7 matches (quarterfinal + semifinal + final)
-		*/
+		 * For 4-player tournaments, max 3 matches (semifinal + final)
+		 * For 8-player tournaments, max 7 matches (quarterfinal + semifinal + final)
+		 */
 		const maxMatches =
 			tournament.player_capacity === 4
 				? 3
@@ -310,6 +177,246 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 			const { player1_id, player2_id, player1_name, player2_name } =
 				matchData;
 
+			// Helper function to validate and prepare tournament players
+			const validateAndPrepareTournamentPlayers = async (tournament) => {
+				// Check if names are identical
+				if (player1_name === player2_name) {
+					throw new CustomError.BadRequestError(
+						"Player names cannot be the same"
+					);
+				}
+
+				// Validate no spaces in names
+				const validateNoSpaces = (name, label) => {
+					if (name.includes(" ")) {
+						throw new CustomError.BadRequestError(
+							`${label} name cannot contain spaces`
+						);
+					}
+				};
+
+				validateNoSpaces(player1_name, "Player 1");
+				validateNoSpaces(player2_name, "Player 2");
+
+				// Get existing participants in the tournament to check for duplicates
+				const existingMatches = await matchModel.getTournamentMatches(
+					tournamentId
+				);
+
+				// Create a map to track player names and their IDs for consistency checking
+				const playerNameToId = new Map(); // Structure: { playerName: userId }
+				existingMatches.forEach((match) => {
+					const player1 = match.player1_name.replace(" (local)", "");
+					const player2 = match.player2_name.replace(" (local)", "");
+
+					// Track player1's ID (could be null for local players)
+					if (!playerNameToId.has(player1)) {
+						playerNameToId.set(player1, match.player1_id);
+					}
+
+					// Track player2's ID (could be null for local players)
+					if (!playerNameToId.has(player2)) {
+						playerNameToId.set(player2, match.player2_id);
+					}
+				});
+
+				// Validate no duplicate players within the same round (prevents bracket conflicts)
+				const validateSameRoundDuplicates = () => {
+					const currentMatchCount = existingMatches.length;
+
+					// Determine current round based on match count and tournament capacity
+					let currentRoundMatches = [];
+
+					if (tournament.player_capacity === 4) {
+						// 4-player tournament: match 0-1 = kickoff, match 2 = final
+						if (currentMatchCount <= 1) {
+							// We're in kickoff round (matches 0-1)
+							currentRoundMatches = existingMatches.slice(0, 2);
+						} else {
+							// We're in final round (match 2)
+							currentRoundMatches = existingMatches.slice(2, 3);
+						}
+					} else if (tournament.player_capacity === 8) {
+						// 8-player tournament: match 0-3 = kickoff, match 4-5 = semi, match 6 = final
+						if (currentMatchCount <= 3) {
+							// We're in kickoff round (matches 0-3)
+							currentRoundMatches = existingMatches.slice(0, 4);
+						} else if (currentMatchCount <= 5) {
+							// We're in semifinal round (matches 4-5)
+							currentRoundMatches = existingMatches.slice(4, 6);
+						} else {
+							// We're in final round (match 6)
+							currentRoundMatches = existingMatches.slice(6, 7);
+						}
+					}
+
+					// Extract all player names from current round (without (local) suffix)
+					const currentRoundPlayers = new Set();
+					currentRoundMatches.forEach((match) => {
+						const player1Clean = match.player1_name.replace(
+							" (local)",
+							""
+						);
+						const player2Clean = match.player2_name.replace(
+							" (local)",
+							""
+						);
+						currentRoundPlayers.add(player1Clean);
+						currentRoundPlayers.add(player2Clean);
+					});
+
+					// Check if either of the new players is already in the current round
+					if (currentRoundPlayers.has(player1_name)) {
+						throw new CustomError.BadRequestError(
+							`Player "${player1_name}" is already participating in the current round of this tournament`
+						);
+					}
+
+					if (currentRoundPlayers.has(player2_name)) {
+						throw new CustomError.BadRequestError(
+							`Player "${player2_name}" is already participating in the current round of this tournament`
+						);
+					}
+				};
+
+				// Validate player identity consistency across tournament (prevents identity conflicts)
+				const validatePlayerIdentityConsistency = () => {
+					// Check player1 name/ID consistency
+					if (playerNameToId.has(player1_name)) {
+						const existingId = playerNameToId.get(player1_name);
+						// If player had an ID before, it must match; or both must be null (local players)
+						if (existingId !== player1_id) {
+							throw new CustomError.BadRequestError(
+								`Player name "${player1_name}" is already used in this tournament with a different identity`
+							);
+						}
+					}
+
+					// Check player2 name/ID consistency
+					if (playerNameToId.has(player2_name)) {
+						const existingId = playerNameToId.get(player2_name);
+						// If player had an ID before, it must match; or both must be null (local players)
+						if (existingId !== player2_id) {
+							throw new CustomError.BadRequestError(
+								`Player name "${player2_name}" is already used in this tournament with a different identity`
+							);
+						}
+					}
+				};
+
+				// Validate no new participants after kickoff round (prevents late tournament entries)
+				const validateNoNewParticipantsAfterKickoff = () => {
+					const currentMatchCount = existingMatches.length;
+
+					// Determine if we're past the kickoff round
+					const isPastKickoffRound =
+						(tournament.player_capacity === 4 &&
+							currentMatchCount >= 2) ||
+						(tournament.player_capacity === 8 &&
+							currentMatchCount >= 4);
+
+					if (isPastKickoffRound) {
+						// Get all existing tournament participants
+						const existingParticipants = new Set();
+						existingMatches.forEach((match) => {
+							const player1Clean = match.player1_name.replace(
+								" (local)",
+								""
+							);
+							const player2Clean = match.player2_name.replace(
+								" (local)",
+								""
+							);
+							existingParticipants.add(player1Clean);
+							existingParticipants.add(player2Clean);
+						});
+
+						// Check if either new player is not already a tournament participant
+						if (!existingParticipants.has(player1_name)) {
+							throw new CustomError.BadRequestError(
+								`Player "${player1_name}" cannot join the tournament after the kickoff round has ended`
+							);
+						}
+
+						if (!existingParticipants.has(player2_name)) {
+							throw new CustomError.BadRequestError(
+								`Player "${player2_name}" cannot join the tournament after the kickoff round has ended`
+							);
+						}
+					}
+				};
+
+				// Run validations
+				validateSameRoundDuplicates();
+				validatePlayerIdentityConsistency();
+				validateNoNewParticipantsAfterKickoff();
+
+				// Validate authenticated users (if any)
+				const validateAuthUser = async (
+					userId,
+					providedName,
+					label
+				) => {
+					if (userId) {
+						const user = await userModel.findById(userId);
+						if (!user) {
+							throw new CustomError.NotFoundError(
+								`${label} user not found`
+							);
+						}
+						if (user.username !== providedName) {
+							throw new CustomError.BadRequestError(
+								`${label} name does not match user's username`
+							);
+						}
+						return user.username;
+					}
+					return null;
+				};
+
+				// Helper function to process and validate individual players
+				const processPlayer = async (
+					playerId,
+					playerName,
+					playerLabel
+				) => {
+					if (playerId === currentUserId) {
+						// Current user, validate username
+						await validateAuthUser(
+							playerId,
+							playerName,
+							playerLabel
+						);
+						return playerName;
+					} else if (playerId) {
+						// Another user ID was provided, which is not allowed
+						throw new CustomError.UnauthorizedError(
+							"Only the current user's ID should be provided, impersonating other users is forbidden"
+						);
+					} else {
+						// Local player, add (local) suffix
+						return `${playerName} (local)`;
+					}
+				};
+
+				// Process both players
+				const finalPlayer1Name = await processPlayer(
+					player1_id,
+					player1_name,
+					"Player 1"
+				);
+				const finalPlayer2Name = await processPlayer(
+					player2_id,
+					player2_name,
+					"Player 2"
+				);
+
+				return {
+					player1_name: finalPlayer1Name,
+					player2_name: finalPlayer2Name,
+				};
+			};
+
 			const tournament = await tournamentModel.getTournament(
 				tournamentId
 			);
@@ -336,18 +443,11 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 				player2_id
 			);
 
-			// Use tournament-specific validation
+			// Validate and prepare tournament players
 			const {
 				player1_name: finalPlayer1Name,
 				player2_name: finalPlayer2Name,
-			} = await validateAndPrepareTournamentPlayers(
-				tournamentId,
-				currentUserId,
-				player1_id,
-				player2_id,
-				player1_name,
-				player2_name
-			);
+			} = await validateAndPrepareTournamentPlayers(tournament);
 
 			// Create a match with tournament_id
 			const match = await matchModel.createMatch({

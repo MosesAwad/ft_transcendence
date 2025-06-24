@@ -11,6 +11,7 @@ class Match {
 		player1_name,
 		player2_name,
 		match_type,
+		tournament_id,
 	}) {
 		const [match] = await this.db("matches")
 			.insert({
@@ -19,6 +20,7 @@ class Match {
 				player1_name,
 				player2_name,
 				match_type,
+				tournament_id,
 			})
 			.returning("*");
 
