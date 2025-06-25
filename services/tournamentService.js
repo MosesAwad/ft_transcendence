@@ -198,10 +198,57 @@ module.exports = (tournamentModel, matchModel, userModel) => {
 				validateNoSpaces(player1_name, "Player 1");
 				validateNoSpaces(player2_name, "Player 2");
 
-				// Get existing participants in the tournament to check for duplicates
+				// Get existing matches and participants in the tournament
 				const existingMatches = await matchModel.getTournamentMatches(
 					tournamentId
 				);
+
+				// Track players who have lost matches in the tournament
+				const getMatchLosers = (matches) => {
+					const losers = new Set();
+
+					matches
+						.filter((match) => match.status === "finished")
+						.forEach((match) => {
+							// Determine the loser based on scores
+							if (match.player1_score > match.player2_score) {
+								// Player 2 lost
+								const loserName = match.player2_name.replace(
+									" (local)",
+									""
+								);
+								losers.add(loserName);
+							} else if (
+								match.player2_score > match.player1_score
+							) {
+								// Player 1 lost
+								const loserName = match.player1_name.replace(
+									" (local)",
+									""
+								);
+								losers.add(loserName);
+							}
+							// If there's a tie, no one is considered a loser
+						});
+
+					return losers;
+				};
+
+				// Get players who have lost matches
+				const losers = getMatchLosers(existingMatches);
+
+				// Check if either player has lost a match
+				if (losers.has(player1_name)) {
+					throw new CustomError.BadRequestError(
+						`Player "${player1_name}" cannot participate in this match as they have already lost in this tournament`
+					);
+				}
+
+				if (losers.has(player2_name)) {
+					throw new CustomError.BadRequestError(
+						`Player "${player2_name}" cannot participate in this match as they have already lost in this tournament`
+					);
+				}
 
 				// Create a map to track player names and their IDs for consistency checking
 				const playerNameToId = new Map(); // Structure: { playerName: userId }
