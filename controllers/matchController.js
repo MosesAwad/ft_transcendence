@@ -57,7 +57,7 @@ module.exports = (matchModel, teamModel, userModel) => {
 				match_type,
 			});
 
-			return reply.status(StatusCodes.CREATED).send({ match });
+			return reply.status(StatusCodes.CREATED).send(match);
 		},
 
 		updateMatchResult: async (request, reply) => {
@@ -95,7 +95,7 @@ module.exports = (matchModel, teamModel, userModel) => {
 				currentUserId
 			);
 
-			return reply.status(StatusCodes.OK).send({ match: updatedMatch });
+			return reply.status(StatusCodes.OK).send(updatedMatch);
 		},
 	};
 };

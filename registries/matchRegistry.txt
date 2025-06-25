@@ -7,7 +7,7 @@
 
 
 =====================================================================================================
-                                        SECTION
+                                            SECTION
 
     This section is for regular matches (match_type = 1v1 and match_type = 1vAi). Tournament matches 
                     and multiplayer matches are described in another section.
@@ -176,8 +176,143 @@ Endpoint:
             "player1_name": "mr1",
             "player2_name": "Max"
         }
-    
-DISCLAIMER:
 
-    To finalize or update the results of a tournament match, just use the regular match endpoint for that 
-    which is PATCH /matches/:matchId
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Finalizes the score of a tournament match. Only the user which created the tournament is able to 
+    hit this endpoint and it works on any match within this tournament, including matches which the 
+    user is not participating in.
+
+Endpoint:
+
+    PATCH tournament/:tournamentId/matches/:matchId
+
+    Body:
+
+    {
+        "player1_score": 3,
+        "player2_score": 2
+    }
+
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Lists explicit details for a single tournament.
+
+Endpoint:
+    GET /tournaments/:tournamentId
+
+Sample Response:
+
+    {
+        "id": 1,
+        "player_capacity": 4,
+        "created_at": "2025-06-24 23:54:38",
+        "updated_at": "2025-06-24 23:54:38",
+        "match_count": 3,
+        "participants": [
+            "Jake (local)",
+            "Fajita (local)",
+            "mr1",
+            "Excalibur (local)"
+        ],
+        "matches": [
+            {
+                "id": 1,
+                "player1_name": "Jake (local)",
+                "player2_name": "Fajita (local)",
+                "match_type": "tournament",
+                "player1_score": 3,
+                "player2_score": 2,
+                "status": "finished",
+                "tournament_id": 1,
+                "created_at": "2025-06-24 23:54:53",
+                "updated_at": "2025-06-24 23:56:01",
+                "player1_id": null,
+                "player2_id": null
+            },
+            {
+                "id": 2,
+                "player1_name": "mr1",
+                "player2_name": "Excalibur (local)",
+                "match_type": "tournament",
+                "player1_score": 2,
+                "player2_score": 3,
+                "status": "finished",
+                "tournament_id": 1,
+                "created_at": "2025-06-24 23:55:46",
+                "updated_at": "2025-06-24 23:56:08",
+                "player1_id": 4,
+                "player2_id": null
+            },
+            {
+                "id": 3,
+                "player1_name": "mr1",
+                "player2_name": "Jake (local)",
+                "match_type": "tournament",
+                "player1_score": 3,
+                "player2_score": 1,
+                "status": "finished",
+                "tournament_id": 1,
+                "created_at": "2025-06-24 23:56:21",
+                "updated_at": "2025-06-24 23:56:35",
+                "player1_id": 4,
+                "player2_id": null
+            }
+        ],
+        "tournamentStatus": {
+            "isComplete": true,
+            "currentMatchCount": 3,
+            "maxMatches": 3,
+            "remainingMatches": 0
+        }
+    }
+
+
+------------------------------------------------------------------------------------------------------
+
+Action:
+    Lists all the tournaments that have been played (not restricted to a single user).
+
+Endpoint:
+
+    GET /tournaments?page=1&limit=10
+
+Sample Response:
+
+    {
+        "tournaments": [
+            {
+                "id": 2,
+                "player_capacity": 4,
+                "created_at": "2025-06-25 00:01:50",
+                "updated_at": "2025-06-25 00:01:50",
+                "match_count": 3,
+                "participants": [
+                    "mr2",
+                    "Maroon (local)",
+                    "Faze (local)",
+                    "Johnny (local)"
+                ],
+                "isComplete": true
+            },
+            {
+                "id": 1,
+                "player_capacity": 4,
+                "created_at": "2025-06-24 23:54:38",
+                "updated_at": "2025-06-24 23:54:38",
+                "match_count": 3,
+                "participants": [
+                    "Jake (local)",
+                    "Fajita (local)",
+                    "mr1",
+                    "Excalibur (local)"
+                ],
+                "isComplete": true
+            }
+        ],
+        "totalCount": 2,
+        "page": 1,
+        "limit": 10
+    }
