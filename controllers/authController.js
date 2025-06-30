@@ -204,6 +204,8 @@ module.exports = (userModel, tokenModel, fastify) => ({
 		);
 		const userInfo = await userResponse.json();
 		const deviceId = request.deviceId; // added to the request object via our checkStateFunction in oAuthPlugin configuration
+		const redirectUrl = request.redirectUrl; // added to the request object via our checkStateFunction in oAuthPlugin configuration
+
 		const userPayload = await googleLogin(
 			userInfo,
 			deviceId,
@@ -214,7 +216,12 @@ module.exports = (userModel, tokenModel, fastify) => ({
 			reply
 		);
 
-		reply.send({ message: "Logged in with Google", userPayload });
+		// Build the redirect URL using environment variable as base
+		const finalRedirectUrl = `http://localhost:3000/${redirectUrl}`;
+
+		console.log(finalRedirectUrl);
+		// Redirect to the dashboard instead of sending JSON response
+		reply.redirect(finalRedirectUrl);
 	},
 
 	logout: async (request, reply) => {

@@ -114,6 +114,7 @@ const start = async () => {
 					);
 					const parsed = JSON.parse(json);
 					request.deviceId = parsed.deviceId;
+					request.redirectUrl = parsed.redirectUrl;
 					callback();
 					return;
 				}

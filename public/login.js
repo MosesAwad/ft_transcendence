@@ -91,8 +91,15 @@ document.addEventListener("DOMContentLoaded", () => {
 			localStorage.setItem("deviceId", deviceId);
 		}
 
-		// Create JSON and base64 encode it
-		const state = encodeURIComponent(btoa(JSON.stringify({ deviceId })));
+		// Create JSON and base64 encode it with both deviceId and redirectUrl
+		const state = encodeURIComponent(
+			btoa(
+				JSON.stringify({
+					deviceId,
+					redirectUrl: "dashboard.html",
+				})
+			)
+		);
 
 		window.location.href = `${baseURL}/auth/google/login?state=${state}`;
 	});
